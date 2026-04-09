@@ -21,12 +21,12 @@ func can_place_road(player_idx: int) -> bool:
 		return false
 	# Must connect to own settlement or own road
 	for v in vertex_nodes:
-		if v.owner == player_idx:
+		if v.building_owner == player_idx:
 			return true
 		for edge in v.adjacent_edges:
 			if edge != self and edge.road_owner == player_idx:
 				# Check the path isn't blocked by opponent's building on shared vertex
-				if v.owner == -1 or v.owner == player_idx:
+				if v.building_owner == -1 or v.building_owner == player_idx:
 					return true
 	return false
 

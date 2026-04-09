@@ -10,4 +10,4 @@ script = ExtResource("1_rvslj")
 [node name="Board" parent="." unique_id=254002120 instance=ExtResource("2_0bbpv")]
 position = Vector2(500, 400)
 
-[node name="Ui" parent="." unique_id=759548579 instance=ExtResource("3_0bbpv")]
+[node name="UI" parent="." unique_id=759548579 instance=ExtResource("3_0bbpv")]

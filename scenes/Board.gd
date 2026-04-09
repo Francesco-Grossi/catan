@@ -66,9 +66,10 @@ func _generate_board() -> void:
 	_link_hex_vertices()
 
 func _axial_to_pixel(coord: Vector2i) -> Vector2:
+	var offset := Vector2(300, -30)
 	var x := HEX_SIZE * (3.0 / 2.0 * coord.x)
 	var y := HEX_SIZE * (sqrt(3.0) / 2.0 * coord.x + sqrt(3.0) * coord.y)
-	return Vector2(x, y)
+	return Vector2(x, y) + offset
 
 func _hex_corners(center: Vector2) -> Array[Vector2]:
 	var corners: Array[Vector2] = []
