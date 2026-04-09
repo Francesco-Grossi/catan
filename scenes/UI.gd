@@ -18,7 +18,7 @@ extends CanvasLayer
 @onready var receive_option: OptionButton = $Panel/VBox/HBoxTrade/ReceiveOption
 @onready var btn_trade: Button            = $Panel/VBox/HBoxTrade/BtnTrade
 
-var _pending_action: String = ""   # "settlement", "city", "road"
+var _pending_action: String = ""
 
 func _ready() -> void:
 	GameManager.phase_changed.connect(_on_phase_changed)
@@ -38,7 +38,6 @@ func _ready() -> void:
 
 	_populate_trade_options()
 
-	# Connect all vertex and edge clicks
 	for v in GameManager.vertices:
 		v.clicked.connect(_on_vertex_clicked)
 	for e in GameManager.edges:
@@ -47,7 +46,7 @@ func _ready() -> void:
 	_refresh_ui()
 
 func _populate_trade_options() -> void:
-	var labels := ["Wood","Brick","Ore","Wheat","Sheep"]
+	var labels := ["Wood", "Brick", "Ore", "Wheat", "Sheep"]
 	give_option.clear()
 	receive_option.clear()
 	for l in labels:
@@ -56,33 +55,42 @@ func _populate_trade_options() -> void:
 
 # ── UI refresh ─────────────────────────────────────────────────────────────
 func _refresh_ui() -> void:
+	if GameManager.players.is_empty():
+		return
 	var p := GameManager.get_current_player()
 	lbl_player.text = "Player %d" % (p.player_index + 1)
 	lbl_player.add_theme_color_override("font_color", p.color)
 	lbl_phase.text = "Phase: " + GameManager.Phase.keys()[GameManager.current_phase]
 	lbl_vp.text = "VP: %d" % p.victory_points
 
+	var res_labels := ["Wood", "Brick", "Ore", "Wheat", "Sheep"]
 	var res_text := ""
-	for r: GameManager.Resource in GameManager.Resource.values():
-		res_text += "%s: %d  " % [GameManager.Resource.keys()[r], p.resources.get(r, 0)]
+	for i in GameManager.ResType.values().size():
+		var res_val: int = GameManager.ResType.values()[i]
+		res_text += "%s: %d  " % [res_labels[i], p.resources.get(res_val, 0)]
 	lbl_resources.text = res_text
 
-	var in_roll   := GameManager.current_phase == GameManager.Phase.ROLL
-	var in_build  := GameManager.current_phase == GameManager.Phase.BUILD
-	var in_setup  := GameManager._is_setup_phase()
+	var in_roll  := GameManager.current_phase == GameManager.Phase.ROLL
+	var in_build := GameManager.current_phase == GameManager.Phase.BUILD
+	var in_setup := GameManager._is_setup_phase()
 
-	btn_roll.disabled = not in_roll
-	btn_end.disabled  = not in_build
+	btn_roll.disabled       = not in_roll
+	btn_end.disabled        = not in_build
 	btn_settlement.disabled = not (in_build or in_setup)
-	btn_city.disabled  = not in_build
-	btn_road.disabled  = not (in_build or in_setup)
-	btn_dev.disabled   = not in_build
-	btn_trade.disabled = not in_build
+	btn_city.disabled       = not in_build
+	btn_road.disabled       = not (in_build or in_setup)
+	btn_dev.disabled        = not in_build
+	btn_trade.disabled      = not in_build
 
 # ── Signal handlers ────────────────────────────────────────────────────────
-func _on_phase_changed(_p) -> void: _refresh_ui()
-func _on_turn_changed(_i) -> void:  _refresh_ui()
-func _on_resources_changed(_i) -> void: _refresh_ui()
+func _on_phase_changed(_p: int) -> void:
+	_refresh_ui()
+
+func _on_turn_changed(_i: int) -> void:
+	_refresh_ui()
+
+func _on_resources_changed(_i: int) -> void:
+	_refresh_ui()
 
 func _on_dice_rolled(d1: int, d2: int, total: int) -> void:
 	lbl_dice.text = "🎲 %d + %d = %d" % [d1, d2, total]
@@ -105,8 +113,8 @@ func _on_buy_dev() -> void:
 	GameManager.buy_dev_card(GameManager.current_player_index)
 
 func _on_trade_pressed() -> void:
-	var give    := give_option.selected as GameManager.Resource
-	var receive := receive_option.selected as GameManager.Resource
+	var give: int    = give_option.selected
+	var receive: int = receive_option.selected
 	if give != receive:
 		GameManager.bank_trade(GameManager.current_player_index, give, receive)
 

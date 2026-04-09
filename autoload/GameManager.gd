@@ -2,12 +2,12 @@ extends Node
 
 # ── Enums ──────────────────────────────────────────────────────────────────
 enum Phase { SETUP_SETTLEMENT, SETUP_ROAD, ROLL, BUILD, END_TURN }
-enum Resource { WOOD, BRICK, ORE, WHEAT, SHEEP }
+enum ResType { WOOD, BRICK, ORE, WHEAT, SHEEP }
 enum Terrain { WOOD, BRICK, ORE, WHEAT, SHEEP, DESERT }
 enum Building { NONE, SETTLEMENT, CITY }
 
 # ── Signals ────────────────────────────────────────────────────────────────
-signal phase_changed(new_phase: Phase)
+signal phase_changed(new_phase: int)
 signal turn_changed(player_index: int)
 signal resources_changed(player_index: int)
 signal dice_rolled(die1: int, die2: int, total: int)
@@ -17,52 +17,54 @@ signal log_message(msg: String)
 
 # ── Constants ──────────────────────────────────────────────────────────────
 const WINNING_VP := 10
-
-const BUILD_COSTS: Dictionary = {
-	"road":       { Resource.WOOD: 1, Resource.BRICK: 1 },
-	"settlement": { Resource.WOOD: 1, Resource.BRICK: 1, Resource.WHEAT: 1, Resource.SHEEP: 1 },
-	"city":       { Resource.ORE: 3, Resource.WHEAT: 2 },
-	"dev_card":   { Resource.ORE: 1, Resource.WHEAT: 1, Resource.SHEEP: 1 },
-}
-
-const TERRAIN_TO_RESOURCE: Dictionary = {
-	Terrain.WOOD:  Resource.WOOD,
-	Terrain.BRICK: Resource.BRICK,
-	Terrain.ORE:   Resource.ORE,
-	Terrain.WHEAT: Resource.WHEAT,
-	Terrain.SHEEP: Resource.SHEEP,
-}
-
-const TERRAIN_COUNTS: Dictionary = {
-	Terrain.WOOD:  4,
-	Terrain.BRICK: 3,
-	Terrain.ORE:   3,
-	Terrain.WHEAT: 4,
-	Terrain.SHEEP: 4,
-	Terrain.DESERT: 1,
-}
-
 const NUMBER_TOKENS: Array = [5, 2, 6, 3, 8, 10, 9, 12, 11, 4, 8, 10, 9, 4, 5, 6, 3, 11]
+
+# ── Build costs — must be VAR not const (enum keys need runtime) ───────────
+var BUILD_COSTS: Dictionary = {}
+var TERRAIN_TO_RESOURCE: Dictionary = {}
+var TERRAIN_COUNTS: Dictionary = {}
 
 # ── State ──────────────────────────────────────────────────────────────────
 var players: Array[PlayerData] = []
 var current_player_index: int = 0
-var current_phase: Phase = Phase.SETUP_SETTLEMENT
-var setup_round: int = 0          # 0 = forward, 1 = backward
-var setup_placements: int = 0     # settlements placed this round
-
-var robber_hex: HexData = null    # hex currently holding the robber
-
+var current_phase: int = Phase.SETUP_SETTLEMENT
+var setup_round: int = 0
+var setup_placements: int = 0
+var robber_hex = null
 var dev_card_deck: Array[String] = []
 
 # Board data — populated by Board.gd
-var hex_map: Dictionary = {}      # Vector2i(q,r) → HexData
-var vertices: Array = []          # VertexPoint nodes
-var edges: Array = []             # EdgePoint nodes
+var hex_map: Dictionary = {}
+var vertices: Array = []
+var edges: Array = []
 
 # ── Lifecycle ──────────────────────────────────────────────────────────────
 func _ready() -> void:
+	_init_dictionaries()
 	_build_dev_deck()
+
+func _init_dictionaries() -> void:
+	BUILD_COSTS = {
+		"road":       { ResType.WOOD: 1, ResType.BRICK: 1 },
+		"settlement": { ResType.WOOD: 1, ResType.BRICK: 1, ResType.WHEAT: 1, ResType.SHEEP: 1 },
+		"city":       { ResType.ORE: 3, ResType.WHEAT: 2 },
+		"dev_card":   { ResType.ORE: 1, ResType.WHEAT: 1, ResType.SHEEP: 1 },
+	}
+	TERRAIN_TO_RESOURCE = {
+		Terrain.WOOD:   ResType.WOOD,
+		Terrain.BRICK:  ResType.BRICK,
+		Terrain.ORE:    ResType.ORE,
+		Terrain.WHEAT:  ResType.WHEAT,
+		Terrain.SHEEP:  ResType.SHEEP,
+	}
+	TERRAIN_COUNTS = {
+		Terrain.WOOD:   4,
+		Terrain.BRICK:  3,
+		Terrain.ORE:    3,
+		Terrain.WHEAT:  4,
+		Terrain.SHEEP:  4,
+		Terrain.DESERT: 1,
+	}
 
 func init_players(count: int) -> void:
 	players.clear()
@@ -71,6 +73,13 @@ func init_players(count: int) -> void:
 		var p := PlayerData.new()
 		p.player_index = i
 		p.color = colors[i]
+		p.resources = {
+			ResType.WOOD:  0,
+			ResType.BRICK: 0,
+			ResType.ORE:   0,
+			ResType.WHEAT: 0,
+			ResType.SHEEP: 0,
+		}
 		players.append(p)
 	current_player_index = 0
 	current_phase = Phase.SETUP_SETTLEMENT
@@ -81,6 +90,9 @@ func init_players(count: int) -> void:
 func get_current_player() -> PlayerData:
 	return players[current_player_index]
 
+func _is_setup_phase() -> bool:
+	return current_phase == Phase.SETUP_SETTLEMENT or current_phase == Phase.SETUP_ROAD
+
 func advance_setup() -> void:
 	setup_placements += 1
 	if current_phase == Phase.SETUP_SETTLEMENT:
@@ -88,11 +100,9 @@ func advance_setup() -> void:
 		phase_changed.emit(current_phase)
 		return
 
-	# after placing road, advance player order
 	current_phase = Phase.SETUP_SETTLEMENT
 	var total := players.size() * 2
 	if setup_placements >= total:
-		# Setup finished
 		current_phase = Phase.ROLL
 		phase_changed.emit(current_phase)
 		turn_changed.emit(current_player_index)
@@ -102,7 +112,7 @@ func advance_setup() -> void:
 		if current_player_index < players.size() - 1:
 			current_player_index += 1
 		else:
-			setup_round = 1  # reverse direction
+			setup_round = 1
 	else:
 		if current_player_index > 0:
 			current_player_index -= 1
@@ -110,6 +120,7 @@ func advance_setup() -> void:
 	phase_changed.emit(current_phase)
 	turn_changed.emit(current_player_index)
 
+# ── Dice ───────────────────────────────────────────────────────────────────
 func roll_dice() -> void:
 	if current_phase != Phase.ROLL:
 		return
@@ -137,19 +148,19 @@ func end_turn() -> void:
 # ── Building ───────────────────────────────────────────────────────────────
 func can_afford(player_idx: int, item: String) -> bool:
 	var p := players[player_idx]
-	for res: Resource in BUILD_COSTS[item]:
+	for res in BUILD_COSTS[item]:
 		if p.resources.get(res, 0) < BUILD_COSTS[item][res]:
 			return false
 	return true
 
 func spend(player_idx: int, item: String) -> void:
 	var p := players[player_idx]
-	for res: Resource in BUILD_COSTS[item]:
+	for res in BUILD_COSTS[item]:
 		p.resources[res] -= BUILD_COSTS[item][res]
 	resources_changed.emit(player_idx)
 
 func build_settlement(player_idx: int, vertex: Node) -> bool:
-	if not can_afford(player_idx, "settlement") and not _is_setup_phase():
+	if not _is_setup_phase() and not can_afford(player_idx, "settlement"):
 		return false
 	if not vertex.can_place_settlement(player_idx):
 		return false
@@ -167,7 +178,9 @@ func build_settlement(player_idx: int, vertex: Node) -> bool:
 func build_city(player_idx: int, vertex: Node) -> bool:
 	if not can_afford(player_idx, "city"):
 		return false
-	if vertex.owner != player_idx or vertex.building != GameManager.Building.SETTLEMENT:
+	var v_owner: int = vertex.get("building_owner")
+	var v_building: int = vertex.get("building")
+	if v_owner != player_idx or v_building != Building.SETTLEMENT:
 		return false
 	spend(player_idx, "city")
 	vertex.upgrade_to_city()
@@ -179,7 +192,7 @@ func build_city(player_idx: int, vertex: Node) -> bool:
 	return true
 
 func build_road(player_idx: int, edge: Node) -> bool:
-	if not can_afford(player_idx, "road") and not _is_setup_phase():
+	if not _is_setup_phase() and not can_afford(player_idx, "road"):
 		return false
 	if not edge.can_place_road(player_idx):
 		return false
@@ -197,14 +210,14 @@ func buy_dev_card(player_idx: int) -> bool:
 	if not can_afford(player_idx, "dev_card"):
 		return false
 	spend(player_idx, "dev_card")
-	var card := dev_card_deck.pop_back()
+	var card: String = dev_card_deck.pop_back()
 	players[player_idx].dev_cards.append(card)
 	resources_changed.emit(player_idx)
 	log_message.emit("Player %d bought a dev card" % (player_idx + 1))
 	return true
 
 # ── Trading ────────────────────────────────────────────────────────────────
-func bank_trade(player_idx: int, give_res: Resource, receive_res: Resource) -> bool:
+func bank_trade(player_idx: int, give_res: int, receive_res: int) -> bool:
 	var p := players[player_idx]
 	var rate := _get_trade_rate(player_idx, give_res)
 	if p.resources.get(give_res, 0) < rate:
@@ -212,13 +225,12 @@ func bank_trade(player_idx: int, give_res: Resource, receive_res: Resource) -> b
 	p.resources[give_res] -= rate
 	p.resources[receive_res] = p.resources.get(receive_res, 0) + 1
 	resources_changed.emit(player_idx)
-	log_message.emit("Player %d traded %d %s for 1 %s" % [player_idx + 1, rate,
-		Resource.keys()[give_res], Resource.keys()[receive_res]])
+	log_message.emit("Player %d traded %d for 1" % [player_idx + 1, rate])
 	return true
 
 # ── Robber ─────────────────────────────────────────────────────────────────
-func move_robber(hex: HexData) -> void:
-	if robber_hex:
+func move_robber(hex) -> void:
+	if robber_hex != null:
 		robber_hex.has_robber = false
 	robber_hex = hex
 	hex.has_robber = true
@@ -226,69 +238,67 @@ func move_robber(hex: HexData) -> void:
 	log_message.emit("Robber moved to hex (%d,%d)" % [hex.q, hex.r])
 
 # ── Private ────────────────────────────────────────────────────────────────
-func _is_setup_phase() -> bool:
-	return current_phase in [Phase.SETUP_SETTLEMENT, Phase.SETUP_ROAD]
-
 func _distribute_resources(number: int) -> void:
-	for hex: HexData in hex_map.values():
+	for hex in hex_map.values():
 		if hex.number == number and not hex.has_robber and hex.terrain != Terrain.DESERT:
-			var res: Resource = TERRAIN_TO_RESOURCE[hex.terrain]
+			var res: int = TERRAIN_TO_RESOURCE[hex.terrain]
 			for v in hex.vertex_nodes:
-				if v.owner >= 0:
-					var amount := 2 if v.building == Building.CITY else 1
-					players[v.owner].resources[res] = players[v.owner].resources.get(res, 0) + amount
-					resources_changed.emit(v.owner)
+				var v_owner: int = v.get("building_owner")
+				var v_building: int = v.get("building")
+				if v_owner >= 0:
+					var amount: int = 2 if v_building == Building.CITY else 1
+					players[v_owner].resources[res] = players[v_owner].resources.get(res, 0) + amount
+					resources_changed.emit(v_owner)
 
 func _handle_seven() -> void:
 	for i in players.size():
 		var total_res := 0
-		for res: Resource in Resource.values():
+		for res in ResType.values():
 			total_res += players[i].resources.get(res, 0)
 		if total_res > 7:
-			var to_discard := total_res / 2
-			# AI: discard randomly; human would open a UI
-			_discard_random(i, to_discard)
-	# Signal UI to let current player move robber
+			_discard_random(i, total_res / 2)
 	log_message.emit("7 rolled! Move the robber.")
 
 func _discard_random(player_idx: int, count: int) -> void:
 	var p := players[player_idx]
 	var discarded := 0
 	while discarded < count:
-		var keys := Resource.values().filter(func(r): return p.resources.get(r, 0) > 0)
-		if keys.is_empty():
+		var available: Array = []
+		for res in ResType.values():
+			if p.resources.get(res, 0) > 0:
+				available.append(res)
+		if available.is_empty():
 			break
-		var r: Resource = keys[randi() % keys.size()]
+		var r: int = available[randi() % available.size()]
 		p.resources[r] -= 1
 		discarded += 1
 	resources_changed.emit(player_idx)
 
 func _give_setup_resources(vertex: Node) -> void:
-	for hex: HexData in vertex.adjacent_hexes:
+	for hex in vertex.adjacent_hexes:
 		if hex.terrain != Terrain.DESERT:
-			var res: Resource = TERRAIN_TO_RESOURCE[hex.terrain]
+			var res: int = TERRAIN_TO_RESOURCE[hex.terrain]
 			players[current_player_index].resources[res] = \
 				players[current_player_index].resources.get(res, 0) + 1
 
-func _get_trade_rate(player_idx: int, res: Resource) -> int:
-	# Check ports — vertices owned by player with port
+func _get_trade_rate(player_idx: int, res: int) -> int:
 	for v in vertices:
-		if v.owner == player_idx and v.port_type != -1:
-			if v.port_type == res or v.port_type == 5:  # 5 = 3:1
-				return 2 if v.port_type == res else 3
+		var v_owner: int = v.get("building_owner")
+		var v_port: int = v.get("port_type")
+		if v_owner == player_idx and v_port != -1:
+			if v_port == res or v_port == 5:
+				return 2 if v_port == res else 3
 	return 4
 
 func _update_longest_road() -> void:
 	var best_player := -1
-	var best_length := 4  # must exceed 4 to claim
+	var best_length := 4
 	for i in players.size():
 		var length := _calculate_longest_road(i)
 		players[i].longest_road_length = length
 		if length > best_length:
 			best_length = length
 			best_player = i
-
-	# Transfer longest road card
 	for i in players.size():
 		if players[i].has_longest_road and i != best_player:
 			players[i].has_longest_road = false
@@ -301,28 +311,35 @@ func _update_longest_road() -> void:
 		log_message.emit("Player %d has Longest Road!" % (best_player + 1))
 
 func _calculate_longest_road(player_idx: int) -> int:
-	var player_edges := edges.filter(func(e): return e.road_owner == player_idx)
-	var best := 0
+	var player_edges: Array = []
+	for e in edges:
+		if e.road_owner == player_idx:
+			player_edges.append(e)
+	var best: int = 0
 	for start_edge in player_edges:
 		for start_vertex in start_edge.vertex_nodes:
-			var visited_edges: Array = []
-			var length := _dfs_road(player_idx, start_vertex, null, visited_edges)
+			var visited: Array = []
+			var length: int = _dfs_road(player_idx, start_vertex, null, visited)
 			best = max(best, length)
 	return best
 
-func _dfs_road(player_idx: int, vertex: Node, came_from_edge: Node,
-		visited: Array) -> int:
-	var best := 0
+func _dfs_road(player_idx: int, vertex: Node, came_from_edge, visited: Array) -> int:
+	var best: int = 0
 	for edge in vertex.adjacent_edges:
-		if edge == came_from_edge or edge in visited or edge.road_owner != player_idx:
+		if edge == came_from_edge:
+			continue
+		if visited.has(edge):
+			continue
+		var edge_owner: int = edge.get("road_owner")
+		if edge_owner != player_idx:
 			continue
 		visited.append(edge)
-		var next_vertex := edge.other_vertex(vertex)
-		# Road blocked by opponent's building
-		if next_vertex.owner >= 0 and next_vertex.owner != player_idx:
+		var next_vertex: Node = edge.other_vertex(vertex)
+		var next_owner: int = next_vertex.get("building_owner")
+		if next_owner != -1 and next_owner != player_idx:
 			visited.pop_back()
 			continue
-		var length := 1 + _dfs_road(player_idx, next_vertex, edge, visited)
+		var length: int = 1 + _dfs_road(player_idx, next_vertex, edge, visited)
 		best = max(best, length)
 		visited.pop_back()
 	return best

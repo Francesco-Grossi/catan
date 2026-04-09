@@ -3,15 +3,7 @@ class_name PlayerData
 
 var player_index: int = 0
 var color: Color = Color.WHITE
-
-var resources: Dictionary = {
-	GameManager.Resource.WOOD:  0,
-	GameManager.Resource.BRICK: 0,
-	GameManager.Resource.ORE:   0,
-	GameManager.Resource.WHEAT: 0,
-	GameManager.Resource.SHEEP: 0,
-}
-
+var resources: Dictionary = {}
 var dev_cards: Array[String] = []
 var victory_points: int = 0
 var settlements: int = 0

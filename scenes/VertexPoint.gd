@@ -2,32 +2,31 @@ extends Node2D
 
 signal clicked(vertex: Node)
 
-var owner: int = -1
-var building: GameManager.Building = GameManager.Building.NONE
+var building_owner: int = -1
+var building: int = 0        # 0 = NONE, 1 = SETTLEMENT, 2 = CITY
 var adjacent_edges: Array = []
 var adjacent_hexes: Array = []
-var port_type: int = -1  # -1=none, 0-4=specific resource, 5=3:1
+var port_type: int = -1
 
-@onready var sprite: Node2D  = $Sprite
-@onready var area: Area2D    = $Area2D
+@onready var sprite: ColorRect = $Sprite
+@onready var area: Area2D = $Area2D
 
 func _ready() -> void:
 	area.input_event.connect(_on_input_event)
 	_refresh_visual()
 
 func can_place_settlement(player_idx: int) -> bool:
-	if building != GameManager.Building.NONE:
+	if building != 0:	# 0 = NONE
 		return false
-	# Distance rule: no adjacent vertex can have a building
 	for edge in adjacent_edges:
 		for v in edge.vertex_nodes:
-			if v != self and v.building != GameManager.Building.NONE:
+			if v != self and v.building != 0:
 				return false
-	# During non-setup, must be connected by own road
 	if not GameManager._is_setup_phase():
 		var connected := false
 		for edge in adjacent_edges:
-			if edge.road_owner == player_idx:
+			var edge_owner: int = edge.get("road_owner")
+			if edge_owner == player_idx:
 				connected = true
 				break
 		if not connected:
@@ -35,28 +34,32 @@ func can_place_settlement(player_idx: int) -> bool:
 	return true
 
 func place_settlement(player_idx: int) -> void:
-	owner = player_idx
-	building = GameManager.Building.SETTLEMENT
+	building_owner = player_idx
+	building = 1	# SETTLEMENT
 	_refresh_visual()
 
 func upgrade_to_city() -> void:
-	building = GameManager.Building.CITY
+	building = 2	# CITY
 	_refresh_visual()
 
 func _refresh_visual() -> void:
 	if not is_inside_tree():
 		return
 	match building:
-		GameManager.Building.NONE:
+		0:	# NONE
 			sprite.visible = false
-		GameManager.Building.SETTLEMENT:
+		1:	# SETTLEMENT
 			sprite.visible = true
-			sprite.modulate = GameManager.players[owner].color if owner >= 0 else Color.WHITE
-			sprite.scale = Vector2(0.6, 0.6)
-		GameManager.Building.CITY:
+			if building_owner >= 0 and not GameManager.players.is_empty():
+				sprite.color = GameManager.players[building_owner].color
+			sprite.size = Vector2(14.0, 14.0)
+			sprite.position = Vector2(-7.0, -7.0)
+		2:	# CITY
 			sprite.visible = true
-			sprite.modulate = GameManager.players[owner].color
-			sprite.scale = Vector2(1.0, 1.0)
+			if building_owner >= 0 and not GameManager.players.is_empty():
+				sprite.color = GameManager.players[building_owner].color
+			sprite.size = Vector2(20.0, 20.0)
+			sprite.position = Vector2(-10.0, -10.0)
 
 func _on_input_event(_viewport, event: InputEvent, _shape) -> void:
 	if event is InputEventMouseButton and event.pressed and \

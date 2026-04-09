@@ -59,8 +59,8 @@ func _generate_board() -> void:
 
 		var hex_node := HexTileScene.instantiate() as Node2D
 		hex_node.position = _axial_to_pixel(coord)
-		hex_node.setup(data)
-		hex_container.add_child(hex_node)
+		hex_container.add_child(hex_node)   # ← add to tree FIRST
+		hex_node.setup(data)                # ← then call setup
 
 	_create_vertices_and_edges()
 	_link_hex_vertices()
@@ -81,7 +81,7 @@ func _create_vertices_and_edges() -> void:
 	for coord in GameManager.hex_map:
 		var center := _axial_to_pixel(coord)
 		var corners := _hex_corners(center)
-		var corner_nodes: Array[Node] = []
+		var corner_nodes: Array[Node2D] = []
 
 		for corner in corners:
 			var key := _snap_vec(corner)
@@ -94,14 +94,17 @@ func _create_vertices_and_edges() -> void:
 			corner_nodes.append(_vertex_map[key])
 
 		# Create edges between adjacent corners
+		# Create edges between adjacent corners
 		for i in 6:
-			var v1 := corner_nodes[i]
-			var v2 := corner_nodes[(i + 1) % 6]
+			var v1: Node2D = corner_nodes[i]
+			var v2: Node2D = corner_nodes[(i + 1) % 6]
 			var ekey := _edge_key(v1, v2)
 			if not _edge_map.has(ekey):
 				var e := EdgeScene.instantiate()
-				e.position = (v1.position + v2.position) / 2.0
-				var diff := v2.position - v1.position
+				var pos1: Vector2 = v1.position
+				var pos2: Vector2 = v2.position
+				e.position = (pos1 + pos2) / 2.0
+				var diff: Vector2 = pos2 - pos1
 				e.rotation = diff.angle()
 				edge_container.add_child(e)
 				e.setup(v1, v2)
