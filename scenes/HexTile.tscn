@@ -1,0 +1,37 @@
+[gd_scene format=3 uid="uid://c6kktfqueock0"]
+
+[ext_resource type="Script" uid="uid://df12scxpglwf8" path="res://scenes/HexTile.gd" id="1_k1oo0"]
+
+[node name="HexTile" type="Node2D" unique_id=22849131]
+script = ExtResource("1_k1oo0")
+
+[node name="Polygon2D" type="Polygon2D" parent="." unique_id=1003294142]
+
+[node name="Area2D" type="Area2D" parent="." unique_id=499640318]
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="Area2D" unique_id=286012074]
+
+[node name="LabelEmoji" type="Label" parent="." unique_id=1813104886]
+offset_left = -20.0
+offset_top = -20.0
+offset_right = 20.0
+offset_bottom = 3.0
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="LabelNumber" type="Label" parent="." unique_id=92947412]
+offset_left = -10.0
+offset_top = 10.0
+offset_right = 30.0
+offset_bottom = 33.0
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Robber" type="Node2D" parent="." unique_id=1772554876]
+visible = false
+
+[node name="ColorRect" type="ColorRect" parent="Robber" unique_id=78701451]
+offset_left = -10.0
+offset_top = -10.0
+offset_bottom = 10.0
+color = Color(0.6706895, 0.6706895, 0.6706895, 1)

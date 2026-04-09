@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://dhu02x08l1nk"]
+
+[ext_resource type="Script" uid="uid://bcqhfy5yomfkg" path="res://scenes/EdgePoint.gd" id="1_xhwb8"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_7ss7m"]
+size = Vector2(60, 10)
+
+[node name="EdgePoint" type="Node2D" unique_id=452176919]
+script = ExtResource("1_xhwb8")
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=1226859027]
+visible = false
+offset_left = -30.0
+offset_top = -5.0
+offset_right = 30.0
+offset_bottom = 5.0
+
+[node name="Area2D" type="Area2D" parent="." unique_id=1034519649]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D" unique_id=131634275]
+shape = SubResource("RectangleShape2D_7ss7m")

@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://bjyyftr558glb"]
+
+[ext_resource type="Script" uid="uid://c5c1rq5621lg5" path="res://scenes/Board.gd" id="1_qails"]
+
+[node name="Board" type="Node2D" unique_id=254002120]
+script = ExtResource("1_qails")
+
+[node name="HexTiles" type="Node2D" parent="." unique_id=967268372]
+
+[node name="NumberTokens" type="Node2D" parent="." unique_id=361750734]
+
+[node name="Vertices" type="Node2D" parent="." unique_id=1714011281]
+
+[node name="Edges" type="Node2D" parent="." unique_id=1770366150]

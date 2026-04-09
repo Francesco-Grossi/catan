@@ -1,0 +1,74 @@
+[gd_scene format=3 uid="uid://lf1lmslp7lye"]
+
+[ext_resource type="Script" uid="uid://ijkdeur2o5y2" path="res://scenes/UI.gd" id="1_dj8aq"]
+
+[node name="Ui" type="CanvasLayer" unique_id=759548579]
+script = ExtResource("1_dj8aq")
+
+[node name="Panel" type="Panel" parent="." unique_id=1400911075]
+offset_right = 300.0
+offset_bottom = 500.0
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel" unique_id=2104876470]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="LblPlayer" type="Label" parent="Panel/VBoxContainer" unique_id=217100813]
+layout_mode = 2
+
+[node name="LblPhase" type="Label" parent="Panel/VBoxContainer" unique_id=2110046021]
+layout_mode = 2
+
+[node name="LblDice" type="Label" parent="Panel/VBoxContainer" unique_id=1827579552]
+layout_mode = 2
+
+[node name="LblVP" type="Label" parent="Panel/VBoxContainer" unique_id=1411697348]
+layout_mode = 2
+
+[node name="LblResources" type="Label" parent="Panel/VBoxContainer" unique_id=1881745449]
+layout_mode = 2
+
+[node name="BtnRoll" type="Button" parent="Panel/VBoxContainer" unique_id=1727262630]
+layout_mode = 2
+text = "Roll Dice"
+
+[node name="BtnEnd" type="Button" parent="Panel/VBoxContainer" unique_id=885586037]
+layout_mode = 2
+text = "End Turn"
+
+[node name="BtnSettlement" type="Button" parent="Panel/VBoxContainer" unique_id=1174982924]
+layout_mode = 2
+text = "Build Settlement"
+
+[node name="BtnCity" type="Button" parent="Panel/VBoxContainer" unique_id=450243071]
+layout_mode = 2
+text = "Build City"
+
+[node name="BtnRoad" type="Button" parent="Panel/VBoxContainer" unique_id=1551000759]
+layout_mode = 2
+text = "Build Road"
+
+[node name="BtnDev" type="Button" parent="Panel/VBoxContainer" unique_id=1106002369]
+layout_mode = 2
+text = "Build Dev Card"
+
+[node name="HBoxContainer" type="HBoxContainer" parent="Panel/VBoxContainer" unique_id=1724910929]
+layout_mode = 2
+
+[node name="GiveOption" type="OptionButton" parent="Panel/VBoxContainer/HBoxContainer" unique_id=1248294748]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBoxContainer/HBoxContainer" unique_id=262932676]
+layout_mode = 2
+text = "->"
+
+[node name="ReceiveOption" type="OptionButton" parent="Panel/VBoxContainer/HBoxContainer" unique_id=858568399]
+layout_mode = 2
+
+[node name="BtnTrade" type="Button" parent="Panel/VBoxContainer/HBoxContainer" unique_id=864740100]
+layout_mode = 2
+text = "Trade"
+
+[node name="LogBox" type="RichTextLabel" parent="Panel/VBoxContainer" unique_id=208753922]
+layout_mode = 2

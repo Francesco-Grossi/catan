@@ -1,0 +1,13 @@
+[gd_scene format=3 uid="uid://dverexdi63ui4"]
+
+[ext_resource type="Script" uid="uid://c0m6c8jxvcvg0" path="res://scenes/Main.gd" id="1_rvslj"]
+[ext_resource type="PackedScene" uid="uid://bjyyftr558glb" path="res://scenes/Board.tscn" id="2_0bbpv"]
+[ext_resource type="PackedScene" uid="uid://lf1lmslp7lye" path="res://scenes/UI.tscn" id="3_0bbpv"]
+
+[node name="Main" type="Node2D" unique_id=2019791895]
+script = ExtResource("1_rvslj")
+
+[node name="Board" parent="." unique_id=254002120 instance=ExtResource("2_0bbpv")]
+position = Vector2(500, 400)
+
+[node name="Ui" parent="." unique_id=759548579 instance=ExtResource("3_0bbpv")]

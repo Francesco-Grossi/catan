@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://uqxa87t60864"]
+
+[ext_resource type="Script" uid="uid://dxyns8vusy3n6" path="res://scenes/VertexPoint.gd" id="1_1tcul"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_cd2eo"]
+radius = 14.0
+
+[node name="VertexPoint" type="Node2D" unique_id=691741828]
+script = ExtResource("1_1tcul")
+
+[node name="Sprite" type="ColorRect" parent="." unique_id=860593452]
+visible = false
+offset_left = -10.0
+offset_top = -10.0
+offset_right = 10.0
+offset_bottom = 10.0
+
+[node name="Area2D" type="Area2D" parent="." unique_id=1760075703]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D" unique_id=1577921784]
+shape = SubResource("CircleShape2D_cd2eo")

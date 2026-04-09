@@ -11,8 +11,13 @@ config_version=5
 [application]
 
 config/name="prova_catan"
+run/main_scene="uid://dverexdi63ui4"
 config/features=PackedStringArray("4.6", "GL Compatibility")
 config/icon="res://icon.svg"
+
+[autoload]
+
+GameManager="*uid://b6y1ad0rimvf3"
 
 [physics]
 
