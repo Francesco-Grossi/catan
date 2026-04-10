@@ -12,3 +12,5 @@ script = ExtResource("1_qails")
 [node name="Vertices" type="Node2D" parent="." unique_id=1714011281]
 
 [node name="Edges" type="Node2D" parent="." unique_id=1770366150]
+
+[node name="Ports" type="Node2D" parent="." unique_id=397229375]

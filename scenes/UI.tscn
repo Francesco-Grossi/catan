@@ -6,69 +6,231 @@
 script = ExtResource("1_dj8aq")
 
 [node name="Panel" type="Panel" parent="." unique_id=1400911075]
-offset_right = 300.0
-offset_bottom = 500.0
+offset_right = 240.0
+offset_bottom = 720.0
 
 [node name="VBox" type="VBoxContainer" parent="Panel" unique_id=2104876470]
 layout_mode = 0
-offset_right = 40.0
-offset_bottom = 40.0
+offset_left = 6.0
+offset_top = 6.0
+offset_right = 234.0
+offset_bottom = 714.0
 
 [node name="LblPlayer" type="Label" parent="Panel/VBox" unique_id=217100813]
 layout_mode = 2
+text = "Player 1"
 
 [node name="LblPhase" type="Label" parent="Panel/VBox" unique_id=2110046021]
 layout_mode = 2
+text = "Phase: SETUP"
+autowrap_mode = 2
 
 [node name="LblDice" type="Label" parent="Panel/VBox" unique_id=1827579552]
 layout_mode = 2
+text = "🎲 -"
 
 [node name="LblVP" type="Label" parent="Panel/VBox" unique_id=1411697348]
 layout_mode = 2
+text = "VP: 0"
 
 [node name="LblResources" type="Label" parent="Panel/VBox" unique_id=1881745449]
 layout_mode = 2
+text = "Resources..."
+autowrap_mode = 2
+
+[node name="LblRobberPrompt" type="Label" parent="Panel/VBox" unique_id=100000001]
+visible = false
+modulate = Color(1, 0.35, 0.1, 1)
+layout_mode = 2
+text = "⚠️ Click a hex to place the robber!"
+autowrap_mode = 2
 
 [node name="BtnRoll" type="Button" parent="Panel/VBox" unique_id=1727262630]
 layout_mode = 2
-text = "Roll Dice"
+text = "🎲 Roll Dice"
 
 [node name="BtnEnd" type="Button" parent="Panel/VBox" unique_id=885586037]
 layout_mode = 2
-text = "End Turn"
+text = "⏩ End Turn"
+
+[node name="HSep0" type="HSeparator" parent="Panel/VBox" unique_id=100000002]
+layout_mode = 2
 
 [node name="BtnSettlement" type="Button" parent="Panel/VBox" unique_id=1174982924]
 layout_mode = 2
-text = "Build Settlement"
+text = "🏠 Build Settlement"
 
 [node name="BtnCity" type="Button" parent="Panel/VBox" unique_id=450243071]
 layout_mode = 2
-text = "Build City"
+text = "🏙 Build City"
 
 [node name="BtnRoad" type="Button" parent="Panel/VBox" unique_id=1551000759]
 layout_mode = 2
-text = "Build Road"
+text = "🛣 Build Road"
 
 [node name="BtnDev" type="Button" parent="Panel/VBox" unique_id=1106002369]
 layout_mode = 2
-text = "Build Dev Card"
+text = "🃏 Buy Dev"
+
+[node name="BtnViewDevCards" type="Button" parent="Panel/VBox" unique_id=100000003]
+layout_mode = 2
+text = "📋 Dev Cards (0)"
+
+[node name="HSep1" type="HSeparator" parent="Panel/VBox" unique_id=100000004]
+layout_mode = 2
 
 [node name="HBoxTrade" type="HBoxContainer" parent="Panel/VBox" unique_id=1724910929]
 layout_mode = 2
 
 [node name="GiveOption" type="OptionButton" parent="Panel/VBox/HBoxTrade" unique_id=1248294748]
 layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="Label" type="Label" parent="Panel/VBox/HBoxTrade" unique_id=262932676]
 layout_mode = 2
-text = "->"
+text = "→"
 
 [node name="ReceiveOption" type="OptionButton" parent="Panel/VBox/HBoxTrade" unique_id=858568399]
 layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="BtnTrade" type="Button" parent="Panel/VBox/HBoxTrade" unique_id=864740100]
 layout_mode = 2
 text = "Trade"
 
-[node name="LogBox" type="RichTextLabel" parent="Panel/VBox" unique_id=208753922]
+[node name="HSep2" type="HSeparator" parent="Panel/VBox" unique_id=100000005]
 layout_mode = 2
+
+[node name="LogBox" type="RichTextLabel" parent="Panel/VBox" unique_id=208753922]
+custom_minimum_size = Vector2(0, 180)
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+scroll_following = true
+
+[node name="DevCardPanel" type="Panel" parent="." unique_id=500000001]
+visible = false
+offset_left = 250.0
+offset_top = 10.0
+offset_right = 520.0
+offset_bottom = 380.0
+
+[node name="VBox" type="VBoxContainer" parent="DevCardPanel" unique_id=500000002]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 262.0
+offset_bottom = 362.0
+
+[node name="LblTitle" type="Label" parent="DevCardPanel/VBox" unique_id=500000003]
+layout_mode = 2
+text = "🃏 Your Dev Cards"
+
+[node name="HSep" type="HSeparator" parent="DevCardPanel/VBox" unique_id=500000004]
+layout_mode = 2
+
+[node name="CardList" type="VBoxContainer" parent="DevCardPanel/VBox" unique_id=500000005]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BtnClose" type="Button" parent="DevCardPanel/VBox" unique_id=500000006]
+layout_mode = 2
+text = "Close"
+
+[node name="DiscardPanel" type="Panel" parent="." unique_id=600000001]
+visible = false
+offset_left = 260.0
+offset_top = 160.0
+offset_right = 620.0
+offset_bottom = 500.0
+
+[node name="VBox" type="VBoxContainer" parent="DiscardPanel" unique_id=600000002]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 352.0
+offset_bottom = 332.0
+
+[node name="LblDiscard" type="Label" parent="DiscardPanel/VBox" unique_id=600000003]
+layout_mode = 2
+text = "Discard resources:"
+autowrap_mode = 2
+
+[node name="DiscardList" type="VBoxContainer" parent="DiscardPanel/VBox" unique_id=600000004]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BtnConfirmDiscard" type="Button" parent="DiscardPanel/VBox" unique_id=600000005]
+layout_mode = 2
+text = "Confirm Discard"
+
+[node name="YopPanel" type="Panel" parent="." unique_id=700000001]
+visible = false
+offset_left = 260.0
+offset_top = 180.0
+offset_right = 500.0
+offset_bottom = 340.0
+
+[node name="VBox" type="VBoxContainer" parent="YopPanel" unique_id=700000002]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 232.0
+offset_bottom = 152.0
+
+[node name="LblTitle" type="Label" parent="YopPanel/VBox" unique_id=700000003]
+layout_mode = 2
+text = "🌟 Year of Plenty — pick 2 resources:"
+autowrap_mode = 2
+
+[node name="HBox1" type="HBoxContainer" parent="YopPanel/VBox" unique_id=700000004]
+layout_mode = 2
+
+[node name="LblR1" type="Label" parent="YopPanel/VBox/HBox1" unique_id=700000005]
+layout_mode = 2
+text = "First: "
+
+[node name="Res1" type="OptionButton" parent="YopPanel/VBox/HBox1" unique_id=700000006]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HBox2" type="HBoxContainer" parent="YopPanel/VBox" unique_id=700000007]
+layout_mode = 2
+
+[node name="LblR2" type="Label" parent="YopPanel/VBox/HBox2" unique_id=700000008]
+layout_mode = 2
+text = "Second: "
+
+[node name="Res2" type="OptionButton" parent="YopPanel/VBox/HBox2" unique_id=700000009]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BtnConfirm" type="Button" parent="YopPanel/VBox" unique_id=700000010]
+layout_mode = 2
+text = "Take Resources"
+
+[node name="MonopolyPanel" type="Panel" parent="." unique_id=800000001]
+visible = false
+offset_left = 260.0
+offset_top = 180.0
+offset_right = 500.0
+offset_bottom = 290.0
+
+[node name="VBox" type="VBoxContainer" parent="MonopolyPanel" unique_id=800000002]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 232.0
+offset_bottom = 102.0
+
+[node name="LblTitle" type="Label" parent="MonopolyPanel/VBox" unique_id=800000003]
+layout_mode = 2
+text = "💰 Monopoly — pick a resource to steal:"
+autowrap_mode = 2
+
+[node name="MonopolyRes" type="OptionButton" parent="MonopolyPanel/VBox" unique_id=800000004]
+layout_mode = 2
+
+[node name="BtnConfirm" type="Button" parent="MonopolyPanel/VBox" unique_id=800000005]
+layout_mode = 2
+text = "Steal All!"
