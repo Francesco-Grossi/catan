@@ -21,8 +21,8 @@ GameManager="*uid://b6y1ad0rimvf3"
 
 [display]
 
-window/size/viewport_width=1280
-window/size/viewport_height=720
+window/size/viewport_width=1400
+window/size/viewport_height=800
 
 [physics]
 
