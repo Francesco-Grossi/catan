@@ -234,3 +234,26 @@ layout_mode = 2
 [node name="BtnConfirm" type="Button" parent="MonopolyPanel/VBox" unique_id=800000005]
 layout_mode = 2
 text = "Steal All!"
+
+[node name="StealPanel" type="Panel" parent="." unique_id=900000001]
+visible = false
+offset_left = 260.0
+offset_top = 180.0
+offset_right = 500.0
+offset_bottom = 320.0
+
+[node name="VBox" type="VBoxContainer" parent="StealPanel" unique_id=900000002]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 232.0
+offset_bottom = 132.0
+
+[node name="LblSteal" type="Label" parent="StealPanel/VBox" unique_id=900000003]
+layout_mode = 2
+text = "Choose a player to steal from:"
+autowrap_mode = 2
+
+[node name="StealList" type="VBoxContainer" parent="StealPanel/VBox" unique_id=900000004]
+layout_mode = 2
+size_flags_vertical = 3

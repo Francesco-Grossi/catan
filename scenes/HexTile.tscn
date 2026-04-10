@@ -30,8 +30,5 @@ vertical_alignment = 1
 [node name="Robber" type="Node2D" parent="." unique_id=1772554876]
 visible = false
 
-[node name="ColorRect" type="ColorRect" parent="Robber" unique_id=78701451]
-offset_left = -10.0
-offset_top = -10.0
-offset_bottom = 10.0
-color = Color(0.6706895, 0.6706895, 0.6706895, 1)
+[node name="RobberCircle" type="Polygon2D" parent="Robber" unique_id=1772554877]
+color = Color(0.15, 0.15, 0.15, 0.9)

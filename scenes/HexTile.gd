@@ -23,13 +23,11 @@ var hex_data = null
 func setup(data) -> void:
 	hex_data = data
 
-	# Build hex polygon points
 	var pts: PackedVector2Array = []
 	for i in 6:
-		var angle := deg_to_rad(60.0 * i)
+		var angle := deg_to_rad(0.0 + 60.0 * i)
 		pts.append(Vector2(cos(angle), sin(angle)) * 78.0)
 
-	# Wait until inside tree so @onready nodes are valid
 	if not is_inside_tree():
 		await tree_entered
 
@@ -37,10 +35,32 @@ func setup(data) -> void:
 	var label_emoji := $LabelEmoji
 	var label_number := $LabelNumber
 	var robber := $Robber
+	var robber_circle := $Robber/RobberCircle
 	var area := $Area2D
+	var collision := $Area2D/CollisionPolygon2D
 
 	polygon.polygon = pts
+	collision.polygon = pts   # keep clickable area in sync with visual shape
 	polygon.color = TERRAIN_COLORS[data.terrain]
+
+	# Build a capsule polygon for the robber (tall, narrow, rounded ends)
+	# Offset to the left so it doesn't cover the number/emoji
+	const CAP_RADIUS : float = 9.0
+	const BODY_HALF  : float = 14.0
+	const CAP_SIDES  : int   = 8
+	const OFFSET_X   : float = -28.0
+	var capsule_pts: PackedVector2Array = []
+	# Top cap: semicircle from 180° to 0° (left side → right side, above body)
+	for i in CAP_SIDES + 1:
+		var a := deg_to_rad(180.0 - 180.0 / CAP_SIDES * i)
+		capsule_pts.append(Vector2(OFFSET_X + cos(a) * CAP_RADIUS, -BODY_HALF + sin(a) * CAP_RADIUS))
+	# Bottom cap: semicircle from 0° to -180° (right side → left side, below body)
+	for i in CAP_SIDES + 1:
+		var a := deg_to_rad(-180.0 / CAP_SIDES * i)
+		capsule_pts.append(Vector2(OFFSET_X + cos(a) * CAP_RADIUS, BODY_HALF + sin(a) * CAP_RADIUS))
+	robber_circle.polygon = capsule_pts
+	robber_circle.color   = Color.BLACK
+	robber.position = Vector2.ZERO
 
 	label_emoji.text = TERRAIN_LABELS[data.terrain]
 
@@ -56,10 +76,11 @@ func setup(data) -> void:
 	area.input_event.connect(_on_input_event)
 	GameManager.robber_moved.connect(_on_robber_moved)
 
+# FIX: check MOVE_ROBBER phase, not BUILD
 func _on_input_event(_viewport, event: InputEvent, _shape) -> void:
 	if event is InputEventMouseButton and event.pressed and \
 			event.button_index == MOUSE_BUTTON_LEFT:
-		if GameManager.current_phase == GameManager.Phase.BUILD:
+		if GameManager.current_phase == GameManager.Phase.MOVE_ROBBER:
 			GameManager.move_robber(hex_data)
 
 func _on_robber_moved() -> void:

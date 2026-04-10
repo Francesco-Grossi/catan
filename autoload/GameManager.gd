@@ -16,6 +16,7 @@ signal robber_moved()
 signal log_message(msg: String)
 signal discard_required(player_index: int, amount: int)
 signal robber_placement_required()
+signal steal_required(thief_index: int, victim_indices: Array)
 
 # ── Constants ──────────────────────────────────────────────────────────────
 const WINNING_VP := 10
@@ -179,10 +180,6 @@ func spend(player_idx: int, item: String) -> void:
 	resources_changed.emit(player_idx)
 
 func build_settlement(player_idx: int, vertex: Node) -> bool:
-	
-	if current_phase == Phase.SETUP_ROAD:
-		log_message.emit("Must place a road now!")
-		return false
 	if not _is_setup_phase() and not can_afford(player_idx, "settlement"):
 		return false
 	if not vertex.can_place_settlement(player_idx):
@@ -215,10 +212,6 @@ func build_city(player_idx: int, vertex: Node) -> bool:
 	return true
 
 func build_road(player_idx: int, edge: Node) -> bool:
-	
-	if current_phase == Phase.SETUP_SETTLEMENT:
-		log_message.emit("Must place a settlement first!")
-		return false
 	var is_free: bool = players[player_idx].free_roads > 0
 	if not _is_setup_phase() and not is_free and not can_afford(player_idx, "road"):
 		return false
@@ -327,8 +320,45 @@ func move_robber(hex) -> void:
 	hex.has_robber = true
 	robber_moved.emit()
 	log_message.emit("Robber moved to (%d,%d)" % [hex.q, hex.r])
-	current_phase = Phase.BUILD
-	phase_changed.emit(current_phase)
+
+	# Find adjacent players to steal from (exclude current player, must have resources)
+	var victims: Array = []
+	for v in hex.vertex_nodes:
+		var owner: int = v.building_owner
+		if owner != -1 and owner != current_player_index and not victims.has(owner):
+			var total_res := 0
+			for res in ResType.values():
+				total_res += players[owner].resources.get(res, 0)
+			if total_res > 0:
+				victims.append(owner)
+
+	if victims.is_empty():
+		# No one to steal from — go straight to BUILD
+		current_phase = Phase.BUILD
+		phase_changed.emit(current_phase)
+	else:
+		# Let UI ask the current player to pick a victim
+		current_phase = Phase.BUILD   # phase stays BUILD so UI isn't blocked
+		phase_changed.emit(current_phase)
+		steal_required.emit(current_player_index, victims)
+
+# Called by UI when the player picks a victim to steal from
+func steal_from_player(thief_idx: int, victim_idx: int) -> void:
+	var victim := players[victim_idx]
+	# Collect resources the victim actually has
+	var available: Array = []
+	for res in ResType.values():
+		for _i in victim.resources.get(res, 0):
+			available.append(res)
+	if available.is_empty():
+		return
+	var stolen_res: int = available[randi() % available.size()]
+	victim.resources[stolen_res] -= 1
+	players[thief_idx].resources[stolen_res] = players[thief_idx].resources.get(stolen_res, 0) + 1
+	resources_changed.emit(victim_idx)
+	resources_changed.emit(thief_idx)
+	var names := ["Wood", "Brick", "Ore", "Wheat", "Sheep"]
+	log_message.emit("Player %d stole 1 %s from Player %d" % [thief_idx + 1, names[stolen_res], victim_idx + 1])
 
 # ── Discard ────────────────────────────────────────────────────────────────
 func _handle_seven() -> void:

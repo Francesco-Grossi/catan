@@ -43,6 +43,11 @@ extends CanvasLayer
 @onready var monopoly_res: OptionButton    = $MonopolyPanel/VBox/MonopolyRes
 @onready var btn_monopoly_confirm: Button  = $MonopolyPanel/VBox/BtnConfirm
 
+# Steal panel
+@onready var steal_panel: Panel            = $StealPanel
+@onready var steal_label: Label            = $StealPanel/VBox/LblSteal
+@onready var steal_list: VBoxContainer     = $StealPanel/VBox/StealList
+
 var _pending_action: String = ""
 var _discard_selections: Dictionary = {}   # ResType → SpinBox
 
@@ -55,6 +60,7 @@ func _ready() -> void:
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.discard_required.connect(_on_discard_required)
 	GameManager.robber_placement_required.connect(_on_robber_placement_required)
+	GameManager.steal_required.connect(_on_steal_required)
 
 	btn_roll.pressed.connect(_on_roll_pressed)
 	btn_end.pressed.connect(_on_end_pressed)
@@ -76,6 +82,7 @@ func _ready() -> void:
 	discard_panel.visible = false
 	yop_panel.visible = false
 	monopoly_panel.visible = false
+	steal_panel.visible = false
 	lbl_robber_prompt.visible = false
 
 	for v in GameManager.vertices:
@@ -322,3 +329,22 @@ func _on_edge_clicked(e: Node) -> void:
 			if GameManager._is_setup_phase():
 				GameManager.advance_setup()
 			_pending_action = ""
+
+func _on_steal_required(thief_idx: int, victim_indices: Array) -> void:
+	steal_label.text = "Player %d: choose a player to steal from" % (thief_idx + 1)
+	# Clear previous buttons
+	for child in steal_list.get_children():
+		child.queue_free()
+	# One button per eligible victim
+	for victim_idx in victim_indices:
+		var p := GameManager.players[victim_idx]
+		var btn := Button.new()
+		btn.text = "Player %d" % (victim_idx + 1)
+		btn.add_theme_color_override("font_color", p.color)
+		var captured: int = victim_idx
+		btn.pressed.connect(func():
+			steal_panel.visible = false
+			GameManager.steal_from_player(thief_idx, captured)
+		)
+		steal_list.add_child(btn)
+	steal_panel.visible = true
