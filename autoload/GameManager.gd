@@ -14,9 +14,7 @@ signal dice_rolled(die1: int, die2: int, total: int)
 signal game_over(winner_index: int)
 signal robber_moved()
 signal log_message(msg: String)
-# Emitted when a player must choose cards to discard (UI shows the discard panel)
 signal discard_required(player_index: int, amount: int)
-# Emitted when the robber must be placed (UI shows the prompt)
 signal robber_placement_required()
 
 # ── Constants ──────────────────────────────────────────────────────────────
@@ -32,13 +30,12 @@ var TERRAIN_COUNTS: Dictionary = {}
 var players: Array[PlayerData] = []
 var current_player_index: int = 0
 var current_phase: int = Phase.SETUP_SETTLEMENT
-var setup_round: int = 0
-var setup_placements: int = 0
+var setup_round: int = 0          # 0 = forward (1→N), 1 = backward (N→1)
+var setup_placements: int = 0     # total road placements finished
 var robber_hex = null
 var dev_card_deck: Array[String] = []
 
-# Discard state — exposed so UI.gd can read _discard_current_idx
-var _discard_queue: Array = []       # each element is Array [player_idx, amount]
+var _discard_queue: Array = []
 var _discard_current_idx: int = -1
 var _discard_amount: int = 0
 
@@ -102,30 +99,43 @@ func get_current_player() -> PlayerData:
 func _is_setup_phase() -> bool:
 	return current_phase == Phase.SETUP_SETTLEMENT or current_phase == Phase.SETUP_ROAD
 
+# ── FIX [2]: Correct snake-draft setup order ───────────────────────────────
+# Each player places exactly ONE settlement then ONE road before the turn
+# passes.  Order: 1, 2, 3, 4 (round 0 forward) then 4, 3, 2, 1 (round 1 back).
+# setup_placements counts completed road placements (= completed turns).
 func advance_setup() -> void:
-	setup_placements += 1
 	if current_phase == Phase.SETUP_SETTLEMENT:
+		# Settlement placed — now the same player must place a road
 		current_phase = Phase.SETUP_ROAD
 		phase_changed.emit(current_phase)
 		return
 
-	current_phase = Phase.SETUP_SETTLEMENT
-	var total := players.size() * 2
-	if setup_placements >= total:
+	# Road placed — this player's setup turn is done
+	setup_placements += 1
+	var total_turns: int = players.size() * 2   # 8 turns for 4 players
+
+	if setup_placements >= total_turns:
+		# All setup done — hand off to normal play starting with player 0
+		current_player_index = 0
 		current_phase = Phase.ROLL
 		phase_changed.emit(current_phase)
 		turn_changed.emit(current_player_index)
 		return
 
+	# Advance to next player using snake order
 	if setup_round == 0:
+		# Forward pass: 0 → 1 → 2 → 3
 		if current_player_index < players.size() - 1:
 			current_player_index += 1
 		else:
+			# Reached last player — start the backward pass, same player goes again
 			setup_round = 1
 	else:
+		# Backward pass: 3 → 2 → 1 → 0
 		if current_player_index > 0:
 			current_player_index -= 1
 
+	current_phase = Phase.SETUP_SETTLEMENT
 	phase_changed.emit(current_phase)
 	turn_changed.emit(current_player_index)
 
@@ -169,6 +179,10 @@ func spend(player_idx: int, item: String) -> void:
 	resources_changed.emit(player_idx)
 
 func build_settlement(player_idx: int, vertex: Node) -> bool:
+	
+	if current_phase == Phase.SETUP_ROAD:
+		log_message.emit("Must place a road now!")
+		return false
 	if not _is_setup_phase() and not can_afford(player_idx, "settlement"):
 		return false
 	if not vertex.can_place_settlement(player_idx):
@@ -188,7 +202,6 @@ func build_city(player_idx: int, vertex: Node) -> bool:
 	if not can_afford(player_idx, "city"):
 		log_message.emit("Player %d cannot afford a city" % (player_idx + 1))
 		return false
-	# FIX [5]: direct property access instead of .get() which returns null on typed vars
 	if vertex.building_owner != player_idx or vertex.building != Building.SETTLEMENT:
 		log_message.emit("Player %d: must click your own settlement to upgrade" % (player_idx + 1))
 		return false
@@ -202,6 +215,10 @@ func build_city(player_idx: int, vertex: Node) -> bool:
 	return true
 
 func build_road(player_idx: int, edge: Node) -> bool:
+	
+	if current_phase == Phase.SETUP_SETTLEMENT:
+		log_message.emit("Must place a settlement first!")
+		return false
 	var is_free: bool = players[player_idx].free_roads > 0
 	if not _is_setup_phase() and not is_free and not can_afford(player_idx, "road"):
 		return false
@@ -232,7 +249,6 @@ func buy_dev_card(player_idx: int) -> bool:
 	log_message.emit("Player %d bought a dev card: %s" % [player_idx + 1, card])
 	return true
 
-# FIX [2]: Play a dev card
 func play_dev_card(player_idx: int, card: String) -> bool:
 	if current_phase != Phase.BUILD:
 		return false
@@ -299,7 +315,6 @@ func bank_trade(player_idx: int, give_res: int, receive_res: int) -> bool:
 	return true
 
 # ── Robber ─────────────────────────────────────────────────────────────────
-# FIX [4]: only acts in MOVE_ROBBER phase
 func move_robber(hex) -> void:
 	if current_phase != Phase.MOVE_ROBBER:
 		return
@@ -315,7 +330,7 @@ func move_robber(hex) -> void:
 	current_phase = Phase.BUILD
 	phase_changed.emit(current_phase)
 
-# ── FIX [3]: Player-controlled discard ────────────────────────────────────
+# ── Discard ────────────────────────────────────────────────────────────────
 func _handle_seven() -> void:
 	_discard_queue.clear()
 	for i in players.size():
@@ -335,7 +350,6 @@ func _start_next_discard() -> void:
 		phase_changed.emit(current_phase)
 		robber_placement_required.emit()
 		return
-	# FIX: explicit Array type annotation avoids the `:=` inference error
 	var entry: Array = _discard_queue[0]
 	_discard_current_idx = entry[0]
 	_discard_amount = entry[1]
@@ -344,7 +358,6 @@ func _start_next_discard() -> void:
 	phase_changed.emit(current_phase)
 	discard_required.emit(_discard_current_idx, _discard_amount)
 
-# Called by UI.gd with the chosen resources dictionary
 func submit_discard(player_idx: int, chosen: Dictionary) -> void:
 	if current_phase != Phase.DISCARD:
 		return
@@ -355,7 +368,6 @@ func submit_discard(player_idx: int, chosen: Dictionary) -> void:
 		total_chosen += chosen[res]
 	if total_chosen != _discard_amount:
 		log_message.emit("Must discard exactly %d resources!" % _discard_amount)
-		# Re-emit so the panel stays up
 		discard_required.emit(_discard_current_idx, _discard_amount)
 		return
 	var p := players[player_idx]
@@ -371,7 +383,6 @@ func _distribute_resources(number: int) -> void:
 		if hex.number == number and not hex.has_robber and hex.terrain != Terrain.DESERT:
 			var res: int = TERRAIN_TO_RESOURCE[hex.terrain]
 			for v in hex.vertex_nodes:
-				# Direct property access (not .get()) — these are typed vars on VertexPoint
 				var v_owner: int = v.building_owner
 				var v_building: int = v.building
 				if v_owner >= 0:
@@ -390,9 +401,9 @@ func _get_trade_rate(player_idx: int, res: int) -> int:
 	for v in vertices:
 		if v.building_owner == player_idx and v.port_type != -1:
 			if v.port_type == res:
-				return 2        # specific 2:1 port
+				return 2
 			elif v.port_type == 5:
-				return 3        # generic 3:1 port
+				return 3
 	return 4
 
 func _update_longest_road() -> void:
@@ -414,7 +425,6 @@ func _update_longest_road() -> void:
 		players[best_player].has_longest_road = true
 		players[best_player].victory_points += 2
 		resources_changed.emit(best_player)
-		# FIX [7]: always log when longest road changes owner
 		log_message.emit("🛣️ Player %d has Longest Road! (length %d)" % [best_player + 1, best_length])
 
 func _update_largest_army() -> void:

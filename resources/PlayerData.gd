@@ -14,6 +14,7 @@ var has_longest_road: bool = false
 var has_largest_army: bool = false
 var knights_played: int = 0
 var road_building_roads_left: int = 0
+var free_roads: int = 0
 
 func total_resources() -> int:
 	var total := 0
