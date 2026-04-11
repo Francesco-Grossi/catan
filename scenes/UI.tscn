@@ -22,7 +22,7 @@ text = "Player 1"
 
 [node name="LblPhase" type="Label" parent="Panel/VBox" unique_id=2110046021]
 layout_mode = 2
-text = "Phase: SETUP"
+text = "Phase: PRE-GAME"
 autowrap_mode = 2
 
 [node name="LblDice" type="Label" parent="Panel/VBox" unique_id=1827579552]
@@ -38,106 +38,160 @@ layout_mode = 2
 text = "Resources..."
 autowrap_mode = 2
 
-[node name="LblRobberPrompt" type="Label" parent="Panel/VBox" unique_id=100000001]
+[node name="LblRobber" type="Label" parent="Panel/VBox" unique_id=100000001]
 visible = false
-modulate = Color(1, 0.35, 0.1, 1)
+modulate = Color(1, 0.4, 0.1, 1)
 layout_mode = 2
 text = "⚠️ Click a hex to place the robber!"
 autowrap_mode = 2
 
-[node name="BtnRoll" type="Button" parent="Panel/VBox" unique_id=1727262630]
+[node name="PreGameSection" type="VBoxContainer" parent="Panel/VBox" unique_id=200000001]
+layout_mode = 2
+
+[node name="LblPreGame" type="Label" parent="Panel/VBox/PreGameSection" unique_id=200000002]
+layout_mode = 2
+text = "── Pre-Game ──"
+horizontal_alignment = 1
+
+[node name="BtnShuffle" type="Button" parent="Panel/VBox/PreGameSection" unique_id=200000003]
+layout_mode = 2
+text = "🔀 Shuffle Board"
+
+[node name="BtnStart" type="Button" parent="Panel/VBox/PreGameSection" unique_id=200000004]
+layout_mode = 2
+text = "▶ Start Game"
+
+[node name="GameSection" type="VBoxContainer" parent="Panel/VBox" unique_id=300000001]
+visible = false
+layout_mode = 2
+
+[node name="BtnRoll" type="Button" parent="Panel/VBox/GameSection" unique_id=1727262630]
 layout_mode = 2
 text = "🎲 Roll Dice"
 
-[node name="BtnEnd" type="Button" parent="Panel/VBox" unique_id=885586037]
+[node name="BtnEnd" type="Button" parent="Panel/VBox/GameSection" unique_id=885586037]
 layout_mode = 2
 text = "⏩ End Turn"
 
-[node name="HSep0" type="HSeparator" parent="Panel/VBox" unique_id=100000002]
+[node name="BtnUndo" type="Button" parent="Panel/VBox/GameSection" unique_id=300000002]
+layout_mode = 2
+text = "↩ Undo Build"
+
+[node name="HSep0" type="HSeparator" parent="Panel/VBox/GameSection" unique_id=300000003]
 layout_mode = 2
 
-[node name="BtnSettlement" type="Button" parent="Panel/VBox" unique_id=1174982924]
+[node name="BtnSettlement" type="Button" parent="Panel/VBox/GameSection" unique_id=1174982924]
 layout_mode = 2
 text = "🏠 Build Settlement"
 
-[node name="BtnCity" type="Button" parent="Panel/VBox" unique_id=450243071]
+[node name="BtnCity" type="Button" parent="Panel/VBox/GameSection" unique_id=450243071]
 layout_mode = 2
 text = "🏙 Build City"
 
-[node name="BtnRoad" type="Button" parent="Panel/VBox" unique_id=1551000759]
+[node name="BtnRoad" type="Button" parent="Panel/VBox/GameSection" unique_id=1551000759]
 layout_mode = 2
 text = "🛣 Build Road"
 
-[node name="BtnDev" type="Button" parent="Panel/VBox" unique_id=1106002369]
+[node name="BtnDev" type="Button" parent="Panel/VBox/GameSection" unique_id=1106002369]
 layout_mode = 2
 text = "🃏 Buy Dev"
 
-[node name="BtnViewDevCards" type="Button" parent="Panel/VBox" unique_id=100000003]
+[node name="BtnViewDev" type="Button" parent="Panel/VBox/GameSection" unique_id=300000004]
 layout_mode = 2
 text = "📋 Dev Cards (0)"
 
-[node name="BtnViewPlayedDev" type="Button" parent="Panel/VBox" unique_id=100000006]
+[node name="BtnViewPlayed" type="Button" parent="Panel/VBox/GameSection" unique_id=300000005]
 layout_mode = 2
 text = "🗂 Played Dev Cards"
 
-[node name="HSep1" type="HSeparator" parent="Panel/VBox" unique_id=100000004]
+[node name="HSep1" type="HSeparator" parent="Panel/VBox/GameSection" unique_id=300000006]
 layout_mode = 2
 
-[node name="HBoxTrade" type="HBoxContainer" parent="Panel/VBox" unique_id=1724910929]
+[node name="HBoxBankTrade" type="HBoxContainer" parent="Panel/VBox/GameSection" unique_id=1724910929]
 layout_mode = 2
 
-[node name="GiveOption" type="OptionButton" parent="Panel/VBox/HBoxTrade" unique_id=1248294748]
+[node name="GiveOption" type="OptionButton" parent="Panel/VBox/GameSection/HBoxBankTrade" unique_id=1248294748]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Label" type="Label" parent="Panel/VBox/HBoxTrade" unique_id=262932676]
+[node name="LblArrow" type="Label" parent="Panel/VBox/GameSection/HBoxBankTrade" unique_id=262932676]
 layout_mode = 2
 text = "→"
 
-[node name="ReceiveOption" type="OptionButton" parent="Panel/VBox/HBoxTrade" unique_id=858568399]
+[node name="ReceiveOption" type="OptionButton" parent="Panel/VBox/GameSection/HBoxBankTrade" unique_id=858568399]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="BtnTrade" type="Button" parent="Panel/VBox/HBoxTrade" unique_id=864740100]
+[node name="BtnBankTrade" type="Button" parent="Panel/VBox/GameSection/HBoxBankTrade" unique_id=864740100]
 layout_mode = 2
 text = "Trade"
 
-[node name="HSep2" type="HSeparator" parent="Panel/VBox" unique_id=100000005]
+[node name="BtnPlayerTrade" type="Button" parent="Panel/VBox/GameSection" unique_id=300000007]
 layout_mode = 2
+text = "🤝 Trade with Player"
 
 [node name="LogBox" type="RichTextLabel" parent="Panel/VBox" unique_id=208753922]
-custom_minimum_size = Vector2(0, 180)
+custom_minimum_size = Vector2(0, 150)
 layout_mode = 2
 size_flags_vertical = 3
 bbcode_enabled = true
 scroll_following = true
 
-[node name="DevCardPanel" type="Panel" parent="." unique_id=500000001]
+[node name="DevPanel" type="Panel" parent="." unique_id=500000001]
 visible = false
 offset_left = 250.0
 offset_top = 10.0
 offset_right = 520.0
 offset_bottom = 380.0
 
-[node name="VBox" type="VBoxContainer" parent="DevCardPanel" unique_id=500000002]
+[node name="VBox" type="VBoxContainer" parent="DevPanel" unique_id=500000002]
 layout_mode = 0
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 262.0
 offset_bottom = 362.0
 
-[node name="LblTitle" type="Label" parent="DevCardPanel/VBox" unique_id=500000003]
+[node name="LblTitle" type="Label" parent="DevPanel/VBox" unique_id=500000003]
 layout_mode = 2
 text = "🃏 Your Dev Cards"
 
-[node name="HSep" type="HSeparator" parent="DevCardPanel/VBox" unique_id=500000004]
+[node name="HSep" type="HSeparator" parent="DevPanel/VBox" unique_id=500000004]
 layout_mode = 2
 
-[node name="CardList" type="VBoxContainer" parent="DevCardPanel/VBox" unique_id=500000005]
+[node name="CardList" type="VBoxContainer" parent="DevPanel/VBox" unique_id=500000005]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="BtnClose" type="Button" parent="DevCardPanel/VBox" unique_id=500000006]
+[node name="BtnClose" type="Button" parent="DevPanel/VBox" unique_id=500000006]
+layout_mode = 2
+text = "Close"
+
+[node name="PlayedPanel" type="Panel" parent="." unique_id=950000001]
+visible = false
+offset_left = 250.0
+offset_top = 10.0
+offset_right = 520.0
+offset_bottom = 420.0
+
+[node name="VBox" type="VBoxContainer" parent="PlayedPanel" unique_id=950000002]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 262.0
+offset_bottom = 404.0
+
+[node name="LblTitle" type="Label" parent="PlayedPanel/VBox" unique_id=950000003]
+layout_mode = 2
+text = "🗂 Played Dev Cards"
+
+[node name="HSep" type="HSeparator" parent="PlayedPanel/VBox" unique_id=950000004]
+layout_mode = 2
+
+[node name="PlayedList" type="VBoxContainer" parent="PlayedPanel/VBox" unique_id=950000005]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BtnClose" type="Button" parent="PlayedPanel/VBox" unique_id=950000006]
 layout_mode = 2
 text = "Close"
 
@@ -164,7 +218,7 @@ autowrap_mode = 2
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="BtnConfirmDiscard" type="Button" parent="DiscardPanel/VBox" unique_id=600000005]
+[node name="BtnConfirm" type="Button" parent="DiscardPanel/VBox" unique_id=600000005]
 layout_mode = 2
 text = "Confirm Discard"
 
@@ -209,33 +263,33 @@ text = "Second: "
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="BtnConfirm" type="Button" parent="YopPanel/VBox" unique_id=700000010]
+[node name="BtnOk" type="Button" parent="YopPanel/VBox" unique_id=700000010]
 layout_mode = 2
 text = "Take Resources"
 
-[node name="MonopolyPanel" type="Panel" parent="." unique_id=800000001]
+[node name="MonoPanel" type="Panel" parent="." unique_id=800000001]
 visible = false
 offset_left = 260.0
 offset_top = 180.0
 offset_right = 500.0
 offset_bottom = 290.0
 
-[node name="VBox" type="VBoxContainer" parent="MonopolyPanel" unique_id=800000002]
+[node name="VBox" type="VBoxContainer" parent="MonoPanel" unique_id=800000002]
 layout_mode = 0
 offset_left = 8.0
 offset_top = 8.0
 offset_right = 232.0
 offset_bottom = 102.0
 
-[node name="LblTitle" type="Label" parent="MonopolyPanel/VBox" unique_id=800000003]
+[node name="LblTitle" type="Label" parent="MonoPanel/VBox" unique_id=800000003]
 layout_mode = 2
-text = "💰 Monopoly — pick a resource to steal:"
+text = "💰 Monopoly — pick a resource:"
 autowrap_mode = 2
 
-[node name="MonopolyRes" type="OptionButton" parent="MonopolyPanel/VBox" unique_id=800000004]
+[node name="MonoRes" type="OptionButton" parent="MonoPanel/VBox" unique_id=800000004]
 layout_mode = 2
 
-[node name="BtnConfirm" type="Button" parent="MonopolyPanel/VBox" unique_id=800000005]
+[node name="BtnOk" type="Button" parent="MonoPanel/VBox" unique_id=800000005]
 layout_mode = 2
 text = "Steal All!"
 
@@ -262,31 +316,90 @@ autowrap_mode = 2
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="PlayedDevPanel" type="Panel" parent="." unique_id=950000001]
+[node name="PtPanel" type="Panel" parent="." unique_id=110000001]
 visible = false
 offset_left = 250.0
-offset_top = 10.0
-offset_right = 520.0
-offset_bottom = 420.0
+offset_top = 50.0
+offset_right = 580.0
+offset_bottom = 440.0
 
-[node name="VBox" type="VBoxContainer" parent="PlayedDevPanel" unique_id=950000002]
+[node name="VBox" type="VBoxContainer" parent="PtPanel" unique_id=110000002]
 layout_mode = 0
 offset_left = 8.0
 offset_top = 8.0
-offset_right = 262.0
-offset_bottom = 404.0
+offset_right = 322.0
+offset_bottom = 382.0
 
-[node name="LblTitle" type="Label" parent="PlayedDevPanel/VBox" unique_id=950000003]
+[node name="LblTitle" type="Label" parent="PtPanel/VBox" unique_id=110000003]
 layout_mode = 2
-text = "🗂 Played Dev Cards"
+text = "🤝 Trade with Player"
 
-[node name="HSep" type="HSeparator" parent="PlayedDevPanel/VBox" unique_id=950000004]
+[node name="HSepTop" type="HSeparator" parent="PtPanel/VBox" unique_id=110000004]
 layout_mode = 2
 
-[node name="PlayedList" type="VBoxContainer" parent="PlayedDevPanel/VBox" unique_id=950000005]
+[node name="HBoxTarget" type="HBoxContainer" parent="PtPanel/VBox" unique_id=110000005]
+layout_mode = 2
+
+[node name="LblTarget" type="Label" parent="PtPanel/VBox/HBoxTarget" unique_id=110000006]
+layout_mode = 2
+text = "Trade with: "
+
+[node name="TargetOption" type="OptionButton" parent="PtPanel/VBox/HBoxTarget" unique_id=110000007]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="LblGive" type="Label" parent="PtPanel/VBox" unique_id=110000008]
+layout_mode = 2
+text = "You GIVE (up to 3 each):"
+
+[node name="GiveList" type="VBoxContainer" parent="PtPanel/VBox" unique_id=110000009]
+layout_mode = 2
+
+[node name="LblReceive" type="Label" parent="PtPanel/VBox" unique_id=110000010]
+layout_mode = 2
+text = "You RECEIVE (up to 3 each):"
+
+[node name="RecvList" type="VBoxContainer" parent="PtPanel/VBox" unique_id=110000011]
+layout_mode = 2
+
+[node name="HSepBottom" type="HSeparator" parent="PtPanel/VBox" unique_id=110000012]
+layout_mode = 2
+
+[node name="BtnSend" type="Button" parent="PtPanel/VBox" unique_id=110000013]
+layout_mode = 2
+text = "📨 Send Request"
+
+[node name="BtnCancel" type="Button" parent="PtPanel/VBox" unique_id=110000014]
+layout_mode = 2
+text = "Cancel"
+
+[node name="TrPanel" type="Panel" parent="." unique_id=120000001]
+visible = false
+offset_left = 250.0
+offset_top = 200.0
+offset_right = 580.0
+offset_bottom = 390.0
+
+[node name="VBox" type="VBoxContainer" parent="TrPanel" unique_id=120000002]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 322.0
+offset_bottom = 182.0
+
+[node name="LblOffer" type="Label" parent="TrPanel/VBox" unique_id=120000003]
 layout_mode = 2
 size_flags_vertical = 3
+text = "Trade offer details..."
+autowrap_mode = 2
 
-[node name="BtnClose" type="Button" parent="PlayedDevPanel/VBox" unique_id=950000006]
+[node name="HSep" type="HSeparator" parent="TrPanel/VBox" unique_id=120000004]
 layout_mode = 2
-text = "Close"
+
+[node name="BtnAccept" type="Button" parent="TrPanel/VBox" unique_id=120000005]
+layout_mode = 2
+text = "✅ Accept"
+
+[node name="BtnDecline" type="Button" parent="TrPanel/VBox" unique_id=120000006]
+layout_mode = 2
+text = "❌ Decline"

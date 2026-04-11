@@ -1,412 +1,512 @@
 extends CanvasLayer
 
-# ── Main sidebar refs ──────────────────────────────────────────────────────
-@onready var lbl_player: Label        = $Panel/VBox/LblPlayer
-@onready var lbl_phase: Label         = $Panel/VBox/LblPhase
-@onready var lbl_dice: Label          = $Panel/VBox/LblDice
-@onready var lbl_vp: Label            = $Panel/VBox/LblVP
-@onready var lbl_resources: Label     = $Panel/VBox/LblResources
-@onready var lbl_robber_prompt: Label = $Panel/VBox/LblRobberPrompt
-@onready var btn_roll: Button         = $Panel/VBox/BtnRoll
-@onready var btn_end: Button          = $Panel/VBox/BtnEnd
-@onready var btn_settlement: Button   = $Panel/VBox/BtnSettlement
-@onready var btn_city: Button         = $Panel/VBox/BtnCity
-@onready var btn_road: Button         = $Panel/VBox/BtnRoad
-@onready var btn_dev: Button          = $Panel/VBox/BtnDev
-@onready var btn_view_dev_cards: Button = $Panel/VBox/BtnViewDevCards
-@onready var log_box: RichTextLabel   = $Panel/VBox/LogBox
+# ── Sidebar refs ───────────────────────────────────────────────────────────
+@onready var lbl_player:       Label        = $Panel/VBox/LblPlayer
+@onready var lbl_phase:        Label        = $Panel/VBox/LblPhase
+@onready var lbl_dice:         Label        = $Panel/VBox/LblDice
+@onready var lbl_vp:           Label        = $Panel/VBox/LblVP
+@onready var lbl_resources:    Label        = $Panel/VBox/LblResources
+@onready var lbl_robber:       Label        = $Panel/VBox/LblRobber
 
-# Trade UI
-@onready var give_option: OptionButton    = $Panel/VBox/HBoxTrade/GiveOption
-@onready var receive_option: OptionButton = $Panel/VBox/HBoxTrade/ReceiveOption
-@onready var btn_trade: Button            = $Panel/VBox/HBoxTrade/BtnTrade
+# Pre-game section (lives inside the sidebar VBox)
+@onready var pregame_section:  VBoxContainer = $Panel/VBox/PreGameSection
+@onready var btn_shuffle:      Button        = $Panel/VBox/PreGameSection/BtnShuffle
+@onready var btn_start:        Button        = $Panel/VBox/PreGameSection/BtnStart
 
-# Dev card panel
-@onready var dev_card_panel: Panel        = $DevCardPanel
-@onready var dev_card_list: VBoxContainer = $DevCardPanel/VBox/CardList
-@onready var btn_close_dev: Button        = $DevCardPanel/VBox/BtnClose
+# Game section (lives inside the sidebar VBox, hidden during PRE_GAME)
+@onready var game_section:     VBoxContainer = $Panel/VBox/GameSection
+@onready var btn_roll:         Button        = $Panel/VBox/GameSection/BtnRoll
+@onready var btn_end:          Button        = $Panel/VBox/GameSection/BtnEnd
+@onready var btn_undo:         Button        = $Panel/VBox/GameSection/BtnUndo
+@onready var btn_settlement:   Button        = $Panel/VBox/GameSection/BtnSettlement
+@onready var btn_city:         Button        = $Panel/VBox/GameSection/BtnCity
+@onready var btn_road:         Button        = $Panel/VBox/GameSection/BtnRoad
+@onready var btn_dev:          Button        = $Panel/VBox/GameSection/BtnDev
+@onready var btn_view_dev:     Button        = $Panel/VBox/GameSection/BtnViewDev
+@onready var btn_view_played:  Button        = $Panel/VBox/GameSection/BtnViewPlayed
+@onready var hbox_bank_trade:  HBoxContainer = $Panel/VBox/GameSection/HBoxBankTrade
+@onready var give_option:      OptionButton  = $Panel/VBox/GameSection/HBoxBankTrade/GiveOption
+@onready var receive_option:   OptionButton  = $Panel/VBox/GameSection/HBoxBankTrade/ReceiveOption
+@onready var btn_bank_trade:   Button        = $Panel/VBox/GameSection/HBoxBankTrade/BtnBankTrade
+@onready var btn_player_trade: Button        = $Panel/VBox/GameSection/BtnPlayerTrade
 
-# Discard panel
-@onready var discard_panel: Panel         = $DiscardPanel
-@onready var discard_label: Label         = $DiscardPanel/VBox/LblDiscard
-@onready var discard_list: VBoxContainer  = $DiscardPanel/VBox/DiscardList
-@onready var btn_confirm_discard: Button  = $DiscardPanel/VBox/BtnConfirmDiscard
+@onready var log_box: RichTextLabel = $Panel/VBox/LogBox
 
-# Year of Plenty panel
-@onready var yop_panel: Panel         = $YopPanel
-@onready var yop_res1: OptionButton   = $YopPanel/VBox/HBox1/Res1
-@onready var yop_res2: OptionButton   = $YopPanel/VBox/HBox2/Res2
-@onready var btn_yop_confirm: Button  = $YopPanel/VBox/BtnConfirm
+# ── Floating panels ────────────────────────────────────────────────────────
+@onready var dev_panel:           Panel         = $DevPanel
+@onready var dev_list:            VBoxContainer = $DevPanel/VBox/CardList
+@onready var btn_close_dev:       Button        = $DevPanel/VBox/BtnClose
 
-# Monopoly panel
-@onready var monopoly_panel: Panel         = $MonopolyPanel
-@onready var monopoly_res: OptionButton    = $MonopolyPanel/VBox/MonopolyRes
-@onready var btn_monopoly_confirm: Button  = $MonopolyPanel/VBox/BtnConfirm
+@onready var played_panel:        Panel         = $PlayedPanel
+@onready var played_list:         VBoxContainer = $PlayedPanel/VBox/PlayedList
+@onready var btn_close_played:    Button        = $PlayedPanel/VBox/BtnClose
 
-# Steal panel
-@onready var steal_panel: Panel            = $StealPanel
-@onready var steal_label: Label            = $StealPanel/VBox/LblSteal
-@onready var steal_list: VBoxContainer     = $StealPanel/VBox/StealList
+@onready var discard_panel:       Panel         = $DiscardPanel
+@onready var discard_label:       Label         = $DiscardPanel/VBox/LblDiscard
+@onready var discard_list:        VBoxContainer = $DiscardPanel/VBox/DiscardList
+@onready var btn_confirm_discard: Button        = $DiscardPanel/VBox/BtnConfirm
 
-# Played dev cards panel
-@onready var played_dev_panel: Panel          = $PlayedDevPanel
-@onready var played_dev_list: VBoxContainer   = $PlayedDevPanel/VBox/PlayedList
-@onready var btn_close_played_dev: Button     = $PlayedDevPanel/VBox/BtnClose
-@onready var btn_view_played_dev: Button      = $Panel/VBox/BtnViewPlayedDev
+@onready var yop_panel:  Panel        = $YopPanel
+@onready var yop_res1:   OptionButton = $YopPanel/VBox/HBox1/Res1
+@onready var yop_res2:   OptionButton = $YopPanel/VBox/HBox2/Res2
+@onready var btn_yop_ok: Button       = $YopPanel/VBox/BtnOk
 
+@onready var mono_panel:  Panel        = $MonoPanel
+@onready var mono_res:    OptionButton = $MonoPanel/VBox/MonoRes
+@onready var btn_mono_ok: Button       = $MonoPanel/VBox/BtnOk
+
+@onready var steal_panel:  Panel         = $StealPanel
+@onready var steal_label:  Label         = $StealPanel/VBox/LblSteal
+@onready var steal_list:   VBoxContainer = $StealPanel/VBox/StealList
+
+@onready var pt_panel:      Panel         = $PtPanel
+@onready var pt_target:     OptionButton  = $PtPanel/VBox/HBoxTarget/TargetOption
+@onready var pt_give_list:  VBoxContainer = $PtPanel/VBox/GiveList
+@onready var pt_recv_list:  VBoxContainer = $PtPanel/VBox/RecvList
+@onready var btn_pt_send:   Button        = $PtPanel/VBox/BtnSend
+@onready var btn_pt_cancel: Button        = $PtPanel/VBox/BtnCancel
+
+@onready var tr_panel:      Panel  = $TrPanel
+@onready var tr_label:      Label  = $TrPanel/VBox/LblOffer
+@onready var btn_tr_accept: Button = $TrPanel/VBox/BtnAccept
+@onready var btn_tr_decline:Button = $TrPanel/VBox/BtnDecline
+
+# ── State ──────────────────────────────────────────────────────────────────
 var _pending_action: String = ""
-var _discard_selections: Dictionary = {}   # ResType → SpinBox
+var _discard_spins:  Dictionary = {}
+var _pt_give_spins:  Dictionary = {}
+var _pt_recv_spins:  Dictionary = {}
+var _board: Node2D = null
 
 func _ready() -> void:
+	# Board ref — safe, resolved at runtime not parse-time
+	_board = get_node_or_null("/root/Main/Board")
+
+	# GameManager signals
 	GameManager.phase_changed.connect(_on_phase_changed)
-	GameManager.turn_changed.connect(_on_turn_changed)
-	GameManager.resources_changed.connect(_on_resources_changed)
-	GameManager.dice_rolled.connect(_on_dice_rolled)
-	GameManager.log_message.connect(_on_log)
+	GameManager.turn_changed.connect(func(_i): _refresh_ui())
+	GameManager.resources_changed.connect(func(_i): _refresh_ui())
+	GameManager.dice_rolled.connect(func(d1, d2, t): lbl_dice.text = "🎲 %d+%d=%d" % [d1, d2, t])
+	GameManager.log_message.connect(func(m): log_box.append_text(m + "\n"))
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.discard_required.connect(_on_discard_required)
-	GameManager.robber_placement_required.connect(_on_robber_placement_required)
+	GameManager.robber_placement_required.connect(func(): lbl_robber.visible = true)
 	GameManager.steal_required.connect(_on_steal_required)
+	GameManager.trade_offer_sent.connect(_on_trade_offer_sent)
+	GameManager.trade_offer_resolved.connect(func(): tr_panel.visible = false)
 
-	btn_roll.pressed.connect(_on_roll_pressed)
-	btn_end.pressed.connect(_on_end_pressed)
+	# Pre-game buttons
+	btn_shuffle.pressed.connect(_on_shuffle)
+	btn_start.pressed.connect(_on_start)
+
+	# Game buttons
+	btn_roll.pressed.connect(func(): GameManager.roll_dice())
+	btn_end.pressed.connect(func(): GameManager.end_turn())
+	btn_undo.pressed.connect(func(): GameManager.undo_last_build(); _refresh_ui())
 	btn_settlement.pressed.connect(func(): _set_action("settlement"))
 	btn_city.pressed.connect(func(): _set_action("city"))
 	btn_road.pressed.connect(func(): _set_action("road"))
 	btn_dev.pressed.connect(_on_buy_dev)
-	btn_view_dev_cards.pressed.connect(_open_dev_card_panel)
-	btn_trade.pressed.connect(_on_trade_pressed)
-	btn_close_dev.pressed.connect(func(): dev_card_panel.visible = false)
+	btn_view_dev.pressed.connect(_open_dev_panel)
+	btn_view_played.pressed.connect(_open_played_panel)
+	btn_bank_trade.pressed.connect(_on_bank_trade)
+	btn_player_trade.pressed.connect(_open_pt_panel)
+
+	# Panel buttons
+	btn_close_dev.pressed.connect(func(): dev_panel.visible = false)
+	btn_close_played.pressed.connect(func(): played_panel.visible = false)
 	btn_confirm_discard.pressed.connect(_on_confirm_discard)
-	btn_yop_confirm.pressed.connect(_on_yop_confirm)
-	btn_monopoly_confirm.pressed.connect(_on_monopoly_confirm)
-	btn_view_played_dev.pressed.connect(_open_played_dev_panel)
-	btn_close_played_dev.pressed.connect(func(): played_dev_panel.visible = false)
+	btn_yop_ok.pressed.connect(_on_yop_ok)
+	btn_mono_ok.pressed.connect(_on_mono_ok)
+	btn_pt_send.pressed.connect(_on_pt_send)
+	btn_pt_cancel.pressed.connect(func(): pt_panel.visible = false)
+	btn_tr_accept.pressed.connect(func(): GameManager.accept_trade())
+	btn_tr_decline.pressed.connect(func(): GameManager.decline_trade())
 
-	_populate_trade_options()
-	_populate_res_options([yop_res1, yop_res2, monopoly_res])
+	# Populate resource dropdowns
+	var res_labels := ["Wood", "Brick", "Ore", "Wheat", "Sheep"]
+	for opt in [give_option, receive_option, yop_res1, yop_res2, mono_res]:
+		opt.clear()
+		for l in res_labels:
+			opt.add_item(l)
 
-	dev_card_panel.visible = false
-	discard_panel.visible = false
-	yop_panel.visible = false
-	monopoly_panel.visible = false
-	steal_panel.visible = false
-	played_dev_panel.visible = false
-	lbl_robber_prompt.visible = false
+	_build_pt_spins()
 
+	# Hide all floating panels at start
+	for pan in [dev_panel, played_panel, discard_panel, yop_panel,
+				mono_panel, steal_panel, pt_panel, tr_panel]:
+		pan.visible = false
+	lbl_robber.visible = false
+
+	# Connect board node clicks
 	for v in GameManager.vertices:
 		v.clicked.connect(_on_vertex_clicked)
 	for e in GameManager.edges:
 		e.clicked.connect(_on_edge_clicked)
 
+	# Apply initial phase
+	_on_phase_changed(GameManager.current_phase)
+
+# ── Phase change: toggle sidebar sections ─────────────────────────────────
+func _on_phase_changed(phase: int) -> void:
+	var in_pregame := (phase == GameManager.Phase.PRE_GAME)
+	pregame_section.visible = in_pregame
+	game_section.visible    = not in_pregame
 	_refresh_ui()
-
-# ── Option population ──────────────────────────────────────────────────────
-func _populate_trade_options() -> void:
-	var labels := ["Wood", "Brick", "Ore", "Wheat", "Sheep"]
-	give_option.clear()
-	receive_option.clear()
-	for l in labels:
-		give_option.add_item(l)
-		receive_option.add_item(l)
-
-func _populate_res_options(opts: Array) -> void:
-	var labels := ["Wood", "Brick", "Ore", "Wheat", "Sheep"]
-	for opt in opts:
-		opt.clear()
-		for l in labels:
-			opt.add_item(l)
 
 # ── UI refresh ─────────────────────────────────────────────────────────────
 func _refresh_ui() -> void:
 	if GameManager.players.is_empty():
 		return
-	var p := GameManager.get_current_player()
+	var p  := GameManager.get_current_player()
+	var ph := GameManager.current_phase
+	var P  := GameManager.Phase
+
 	lbl_player.text = "Player %d" % (p.player_index + 1)
 	lbl_player.add_theme_color_override("font_color", p.color)
 
-	var phase_names := ["SETUP_SETTLEMENT", "SETUP_ROAD", "ROLL", "BUILD",
-						"MOVE_ROBBER", "DISCARD", "END_TURN"]
-	lbl_phase.text = "Phase: " + phase_names[GameManager.current_phase]
+	var pnames := ["PRE-GAME","SETUP_SETTLEMENT","SETUP_ROAD","ROLL",
+				   "BUILD","MOVE_ROBBER","DISCARD","END_TURN"]
+	lbl_phase.text = "Phase: " + (pnames[ph] if ph < pnames.size() else "")
 
-	var vp_text := "VP: %d" % p.victory_points
-	if p.has_longest_road: vp_text += " 🛣️"
-	if p.has_largest_army: vp_text += " ⚔️"
-	lbl_vp.text = vp_text
+	var vp := "VP: %d" % p.victory_points
+	if p.has_longest_road: vp += " 🛣️"
+	if p.has_largest_army: vp += " ⚔️"
+	lbl_vp.text = vp
 
-	var res_labels := ["Wd", "Br", "Or", "Wh", "Sh"]
-	var res_text := ""
+	var rl := ["Wd","Br","Or","Wh","Sh"]
+	var rt := ""
 	for i in GameManager.ResType.values().size():
-		var res_val: int = GameManager.ResType.values()[i]
-		res_text += "%s:%d  " % [res_labels[i], p.resources.get(res_val, 0)]
-	lbl_resources.text = res_text
+		rt += "%s:%d  " % [rl[i], p.resources.get(GameManager.ResType.values()[i], 0)]
+	lbl_resources.text = rt
 
-	btn_dev.text = "🃏 Buy Dev (%d)" % GameManager.dev_card_deck.size()
-	btn_view_dev_cards.text = "📋 Dev Cards (%d)" % p.dev_cards.size()
-
-	var in_roll         : bool = GameManager.current_phase == GameManager.Phase.ROLL
-	var in_build        : bool = GameManager.current_phase == GameManager.Phase.BUILD
-	var in_setup_s      : bool = GameManager.current_phase == GameManager.Phase.SETUP_SETTLEMENT
-	var in_setup_r      : bool = GameManager.current_phase == GameManager.Phase.SETUP_ROAD
-	var in_setup        : bool = in_setup_s or in_setup_r
-	var in_robber       : bool = GameManager.current_phase == GameManager.Phase.MOVE_ROBBER
-
-	btn_roll.disabled       = not in_roll
-	btn_end.disabled        = not in_build
-	btn_settlement.disabled = not (in_build or in_setup_s)
-	btn_city.disabled       = not in_build
-	btn_road.disabled       = not (in_build or in_setup_r)
-	btn_dev.disabled        = not in_build
-	btn_trade.disabled      = not in_build
-
-	# During setup, auto-set the pending action so player doesn't need to click the button
-	if in_setup_s and _pending_action != "settlement":
-		_pending_action = "settlement"
-	elif in_setup_r and _pending_action != "road":
-		_pending_action = "road"
-	elif not in_setup:
-		# Outside setup, clear any auto-set pending action only if it was auto-set
-		pass
-
-	lbl_robber_prompt.visible = in_robber
-
-# ── Dev card panel ─────────────────────────────────────────────────────────
-func _open_dev_card_panel() -> void:
-	_refresh_dev_cards()
-	dev_card_panel.visible = true
-
-func _refresh_dev_cards() -> void:
-	for child in dev_card_list.get_children():
-		child.queue_free()
-
-	var p := GameManager.get_current_player()
-	if p.dev_cards.is_empty():
-		var lbl := Label.new()
-		lbl.text = "(no dev cards in hand)"
-		dev_card_list.add_child(lbl)
+	if not game_section.visible:
 		return
 
-	var counts: Dictionary = {}
-	for card in p.dev_cards:
-		counts[card] = counts.get(card, 0) + 1
+	var in_roll    := ph == P.ROLL
+	var in_build   := ph == P.BUILD
+	var in_setup_s := ph == P.SETUP_SETTLEMENT
+	var in_setup_r := ph == P.SETUP_ROAD
+	var in_setup   := in_setup_s or in_setup_r
 
-	var card_labels: Dictionary = {
-		"knight":         "⚔️ Knight",
-		"victory_point":  "🏆 Victory Point",
-		"road_building":  "🛤️ Road Building",
-		"year_of_plenty": "🌟 Year of Plenty",
-		"monopoly":       "💰 Monopoly",
-	}
+	btn_roll.visible         = in_roll
+	btn_end.visible          = in_build
+	btn_undo.visible         = in_build or in_setup
+	btn_settlement.visible   = in_build or in_setup_s
+	btn_city.visible         = in_build
+	btn_road.visible         = in_build or in_setup_r
+	btn_dev.visible          = in_build
+	hbox_bank_trade.visible  = in_build
+	btn_player_trade.visible = in_build
 
-	for card in counts:
-		var hbox := HBoxContainer.new()
-		var lbl := Label.new()
-		lbl.text = "%s ×%d" % [card_labels.get(card, card), counts[card]]
-		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		hbox.add_child(lbl)
+	btn_roll.disabled         = not in_roll
+	btn_end.disabled          = not in_build
+	btn_undo.disabled         = not GameManager.can_undo()
+	btn_settlement.disabled   = not (in_build or in_setup_s)
+	btn_city.disabled         = not in_build
+	btn_road.disabled         = not (in_build or in_setup_r)
+	btn_dev.disabled          = not in_build
+	btn_bank_trade.disabled   = not in_build
+	btn_player_trade.disabled = not in_build
 
-		if card != "victory_point" and GameManager.current_phase == GameManager.Phase.BUILD:
-			var btn := Button.new()
-			btn.text = "▶ Play"
-			var captured_card: String = card
-			btn.pressed.connect(func(): _play_dev_card(captured_card))
-			hbox.add_child(btn)
+	btn_dev.text      = "🃏 Buy Dev (%d)" % GameManager.dev_card_deck.size()
+	btn_view_dev.text = "📋 Dev Cards (%d)" % p.dev_cards.size()
 
-		dev_card_list.add_child(hbox)
+	# Auto-select during setup so player can click board immediately
+	if in_setup_s:
+		_pending_action = "settlement"
+	elif in_setup_r:
+		_pending_action = "road"
+	elif not in_setup and (_pending_action == "settlement" or _pending_action == "road"):
+		_pending_action = ""
 
-func _play_dev_card(card: String) -> void:
-	dev_card_panel.visible = false
-	var idx: int = GameManager.current_player_index
+	lbl_robber.visible = (ph == P.MOVE_ROBBER)
+
+# ── Pre-game ───────────────────────────────────────────────────────────────
+func _on_start() -> void:
+	GameManager.start_game()
+
+func _on_shuffle() -> void:
+	if _board == null:
+		_board = get_node_or_null("/root/Main/Board")
+	if _board and _board.has_method("_generate_board"):
+		_board._generate_board()
+		GameManager.log_message.emit("Board reshuffled.")
+
+# ── Dev card panel ─────────────────────────────────────────────────────────
+func _open_dev_panel() -> void:
+	for c in dev_list.get_children():
+		c.queue_free()
+	var p := GameManager.get_current_player()
+	if p.dev_cards.is_empty():
+		var l := Label.new()
+		l.text = "(no cards in hand)"
+		dev_list.add_child(l)
+	else:
+		var counts := {}
+		for card in p.dev_cards:
+			counts[card] = counts.get(card, 0) + 1
+		var cnames := {
+			"knight":         "⚔️ Knight",
+			"road_building":  "🛤️ Road Building",
+			"year_of_plenty": "🌟 Year of Plenty",
+			"monopoly":       "💰 Monopoly",
+		}
+		for card in counts:
+			var hb := HBoxContainer.new()
+			var lb := Label.new()
+			lb.text = "%s ×%d" % [cnames.get(card, card), counts[card]]
+			lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			hb.add_child(lb)
+			if GameManager.current_phase == GameManager.Phase.BUILD:
+				var btn := Button.new()
+				btn.text = "▶ Play"
+				var cc: String = card
+				btn.pressed.connect(func(): _play_dev(cc))
+				hb.add_child(btn)
+			dev_list.add_child(hb)
+	dev_panel.visible = true
+
+func _play_dev(card: String) -> void:
+	dev_panel.visible = false
+	var idx := GameManager.current_player_index
 	match card:
-		"year_of_plenty":
-			yop_panel.visible = true
-		"monopoly":
-			monopoly_panel.visible = true
+		"year_of_plenty": yop_panel.visible = true
+		"monopoly":       mono_panel.visible = true
 		_:
 			GameManager.play_dev_card(idx, card)
 			_refresh_ui()
 
-# ── Signal handlers ────────────────────────────────────────────────────────
-func _on_phase_changed(_p: int) -> void:
-	_refresh_ui()
+func _open_played_panel() -> void:
+	for c in played_list.get_children():
+		c.queue_free()
+	var cnames := {
+		"knight":         "⚔️ Knight",
+		"road_building":  "🛤️ Road Building",
+		"year_of_plenty": "🌟 Year of Plenty",
+		"monopoly":       "💰 Monopoly",
+	}
+	var any_found := false
+	for i in GameManager.players.size():
+		var pl := GameManager.players[i]
+		if pl.played_dev_cards.is_empty() and pl.victory_point_cards == 0:
+			continue
+		any_found = true
+		var h := Label.new()
+		h.text = "── Player %d ──" % (i + 1)
+		h.add_theme_color_override("font_color", pl.color)
+		played_list.add_child(h)
+		var counts := {}
+		for card in pl.played_dev_cards:
+			counts[card] = counts.get(card, 0) + 1
+		if pl.victory_point_cards > 0:
+			counts["victory_point"] = pl.victory_point_cards
+		for card in counts:
+			var lb := Label.new()
+			var lname: String = "🏆 Victory Point" if card == "victory_point" else cnames.get(card, card)
+			lb.text = "  %s ×%d" % [lname, counts[card]]
+			played_list.add_child(lb)
+	if not any_found:
+		var lb := Label.new()
+		lb.text = "(none yet)"
+		played_list.add_child(lb)
+	played_panel.visible = true
 
-func _on_turn_changed(_i: int) -> void:
-	_refresh_ui()
-
-func _on_resources_changed(_i: int) -> void:
-	_refresh_ui()
-
-func _on_dice_rolled(d1: int, d2: int, total: int) -> void:
-	lbl_dice.text = "🎲 %d + %d = %d" % [d1, d2, total]
-
-func _on_log(msg: String) -> void:
-	log_box.append_text(msg + "\n")
-
-func _on_game_over(winner: int) -> void:
-	lbl_phase.text = "🏆 Player %d WINS!" % (winner + 1)
-	btn_roll.disabled = true
-	btn_end.disabled  = true
-
+# ── Discard ────────────────────────────────────────────────────────────────
 func _on_discard_required(player_idx: int, amount: int) -> void:
 	var p := GameManager.players[player_idx]
-	discard_label.text = "Player %d: discard %d resources" % [player_idx + 1, amount]
+	discard_label.text = "Player %d: discard %d" % [player_idx + 1, amount]
 	discard_label.add_theme_color_override("font_color", p.color)
-	_discard_selections.clear()
-
-	for child in discard_list.get_children():
-		child.queue_free()
-
-	var res_labels := ["Wood", "Brick", "Ore", "Wheat", "Sheep"]
-	var res_types := GameManager.ResType.values()
-
-	for i in res_types.size():
-		var res: int = res_types[i]
+	_discard_spins.clear()
+	for c in discard_list.get_children():
+		c.queue_free()
+	var rl := ["Wood","Brick","Ore","Wheat","Sheep"]
+	for i in GameManager.ResType.values().size():
+		var res: int = GameManager.ResType.values()[i]
 		var owned: int = p.resources.get(res, 0)
 		if owned == 0:
 			continue
-		var hbox := HBoxContainer.new()
-		var lbl := Label.new()
-		lbl.text = "%s (have %d):" % [res_labels[i], owned]
-		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		hbox.add_child(lbl)
-
-		var spin := SpinBox.new()
-		spin.min_value = 0
-		spin.max_value = owned
-		spin.value = 0
-		spin.step = 1
-		spin.custom_minimum_size = Vector2(70, 0)
-		_discard_selections[res] = spin
-		hbox.add_child(spin)
-		discard_list.add_child(hbox)
-
+		var hb := HBoxContainer.new()
+		var lb := Label.new()
+		lb.text = "%s (%d):" % [rl[i], owned]
+		lb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hb.add_child(lb)
+		var sp := SpinBox.new()
+		sp.min_value = 0
+		sp.max_value = owned
+		sp.step = 1
+		sp.custom_minimum_size = Vector2(70, 0)
+		_discard_spins[res] = sp
+		hb.add_child(sp)
+		discard_list.add_child(hb)
 	btn_confirm_discard.text = "Confirm (need %d)" % amount
 	discard_panel.visible = true
 
 func _on_confirm_discard() -> void:
-	var chosen: Dictionary = {}
-	for res in _discard_selections:
-		var val: int = int((_discard_selections[res] as SpinBox).value)
-		if val > 0:
-			chosen[res] = val
+	var chosen := {}
+	for res in _discard_spins:
+		var v := int((_discard_spins[res] as SpinBox).value)
+		if v > 0:
+			chosen[res] = v
 	GameManager.submit_discard(GameManager._discard_current_idx, chosen)
 	if GameManager.current_phase != GameManager.Phase.DISCARD:
 		discard_panel.visible = false
 
-func _on_robber_placement_required() -> void:
-	lbl_robber_prompt.visible = true
-
-func _on_roll_pressed() -> void:
-	GameManager.roll_dice()
-
-func _on_end_pressed() -> void:
-	GameManager.end_turn()
-
-func _on_buy_dev() -> void:
-	if GameManager.buy_dev_card(GameManager.current_player_index):
-		_open_dev_card_panel()
-	_refresh_ui()
-
-func _on_trade_pressed() -> void:
-	var give: int    = give_option.selected
-	var receive: int = receive_option.selected
-	if give != receive:
-		GameManager.bank_trade(GameManager.current_player_index, give, receive)
-
-func _on_yop_confirm() -> void:
-	var idx: int = GameManager.current_player_index
+# ── Year of Plenty / Monopoly ──────────────────────────────────────────────
+func _on_yop_ok() -> void:
+	var idx := GameManager.current_player_index
 	GameManager.play_dev_card(idx, "year_of_plenty")
 	GameManager.play_year_of_plenty(idx, yop_res1.selected, yop_res2.selected)
 	yop_panel.visible = false
 	_refresh_ui()
 
-func _on_monopoly_confirm() -> void:
-	var idx: int = GameManager.current_player_index
+func _on_mono_ok() -> void:
+	var idx := GameManager.current_player_index
 	GameManager.play_dev_card(idx, "monopoly")
-	GameManager.play_monopoly(idx, monopoly_res.selected)
-	monopoly_panel.visible = false
+	GameManager.play_monopoly(idx, mono_res.selected)
+	mono_panel.visible = false
 	_refresh_ui()
 
-func _set_action(action: String) -> void:
-	_pending_action = action
+# ── Bank trade ─────────────────────────────────────────────────────────────
+func _on_bank_trade() -> void:
+	var give := give_option.selected
+	var recv := receive_option.selected
+	if give != recv:
+		GameManager.bank_trade(GameManager.current_player_index, give, recv)
 
+func _on_buy_dev() -> void:
+	if GameManager.buy_dev_card(GameManager.current_player_index):
+		_open_dev_panel()
+	_refresh_ui()
+
+# ── Player trade ───────────────────────────────────────────────────────────
+func _build_pt_spins() -> void:
+	for c in pt_give_list.get_children(): c.queue_free()
+	for c in pt_recv_list.get_children(): c.queue_free()
+	_pt_give_spins.clear()
+	_pt_recv_spins.clear()
+	var rl := ["Wood","Brick","Ore","Wheat","Sheep"]
+	var rt := GameManager.ResType.values()
+	for i in rt.size():
+		var res: int = rt[i]
+		for pass_give in [true, false]:
+			var hb := HBoxContainer.new()
+			var lb := Label.new()
+			lb.text = rl[i] + ":"
+			lb.custom_minimum_size = Vector2(50, 0)
+			hb.add_child(lb)
+			var sp := SpinBox.new()
+			sp.min_value = 0
+			sp.max_value = 3
+			sp.step = 1
+			sp.custom_minimum_size = Vector2(60, 0)
+			hb.add_child(sp)
+			if pass_give:
+				_pt_give_spins[res] = sp
+				pt_give_list.add_child(hb)
+			else:
+				_pt_recv_spins[res] = sp
+				pt_recv_list.add_child(hb)
+
+func _open_pt_panel() -> void:
+	pt_target.clear()
+	for i in GameManager.players.size():
+		if i == GameManager.current_player_index:
+			continue
+		pt_target.add_item("Player %d" % (i + 1), i)
+	for res in _pt_give_spins: (_pt_give_spins[res] as SpinBox).value = 0
+	for res in _pt_recv_spins: (_pt_recv_spins[res] as SpinBox).value = 0
+	pt_panel.visible = true
+
+func _on_pt_send() -> void:
+	if pt_target.item_count == 0:
+		return
+	var to_idx   := pt_target.get_item_id(pt_target.selected)
+	var from_idx := GameManager.current_player_index
+	var give := {}
+	var recv := {}
+	var give_total := 0
+	var recv_total := 0
+	for res in _pt_give_spins:
+		var v := int((_pt_give_spins[res] as SpinBox).value)
+		if v > 0:
+			give[res] = v
+			give_total += v
+	for res in _pt_recv_spins:
+		var v := int((_pt_recv_spins[res] as SpinBox).value)
+		if v > 0:
+			recv[res] = v
+			recv_total += v
+	if give_total == 0 or recv_total == 0:
+		GameManager.log_message.emit("Both sides must include at least 1 resource.")
+		return
+	var sender := GameManager.players[from_idx]
+	for res in give:
+		if sender.resources.get(res, 0) < give[res]:
+			GameManager.log_message.emit("You don't have enough resources for this offer.")
+			return
+	pt_panel.visible = false
+	GameManager.send_trade_offer(from_idx, to_idx, give, recv)
+
+func _on_trade_offer_sent(from_idx: int, to_idx: int, give: Dictionary, receive: Dictionary) -> void:
+	var rl := ["Wood","Brick","Ore","Wheat","Sheep"]
+	var gs := ""; var rs := ""
+	for res in give:
+		if give[res] > 0:
+			gs += "%d %s  " % [give[res], rl[res]]
+	for res in receive:
+		if receive[res] > 0:
+			rs += "%d %s  " % [receive[res], rl[res]]
+	tr_label.text = "Player %d offers:\nGives you: %s\nWants: %s\n\nPlayer %d, accept?" % \
+		[from_idx + 1, gs, rs, to_idx + 1]
+	tr_panel.visible = true
+
+# ── Steal ──────────────────────────────────────────────────────────────────
+func _on_steal_required(thief_idx: int, victim_indices: Array) -> void:
+	steal_label.text = "Player %d: steal from:" % (thief_idx + 1)
+	for c in steal_list.get_children():
+		c.queue_free()
+	for victim_idx in victim_indices:
+		var pl := GameManager.players[victim_idx]
+		var btn := Button.new()
+		btn.text = "Player %d" % (victim_idx + 1)
+		btn.add_theme_color_override("font_color", pl.color)
+		var cap: int = victim_idx
+		btn.pressed.connect(func():
+			steal_panel.visible = false
+			GameManager.steal_from_player(thief_idx, cap))
+		steal_list.add_child(btn)
+	steal_panel.visible = true
+
+# ── Board clicks ───────────────────────────────────────────────────────────
 func _on_vertex_clicked(v: Node) -> void:
-	var idx: int = GameManager.current_player_index
+	var idx := GameManager.current_player_index
 	match _pending_action:
 		"settlement":
 			if GameManager.build_settlement(idx, v):
 				if GameManager._is_setup_phase():
 					GameManager.advance_setup()
 				_pending_action = ""
+				_refresh_ui()
 		"city":
 			if GameManager.build_city(idx, v):
 				_pending_action = ""
+				_refresh_ui()
 
 func _on_edge_clicked(e: Node) -> void:
-	var idx: int = GameManager.current_player_index
 	if _pending_action == "road":
-		if GameManager.build_road(idx, e):
+		if GameManager.build_road(GameManager.current_player_index, e):
 			if GameManager._is_setup_phase():
 				GameManager.advance_setup()
 			_pending_action = ""
+			_refresh_ui()
 
-func _on_steal_required(thief_idx: int, victim_indices: Array) -> void:
-	steal_label.text = "Player %d: choose a player to steal from" % (thief_idx + 1)
-	# Clear previous buttons
-	for child in steal_list.get_children():
-		child.queue_free()
-	# One button per eligible victim
-	for victim_idx in victim_indices:
-		var p := GameManager.players[victim_idx]
-		var btn := Button.new()
-		btn.text = "Player %d" % (victim_idx + 1)
-		btn.add_theme_color_override("font_color", p.color)
-		var captured: int = victim_idx
-		btn.pressed.connect(func():
-			steal_panel.visible = false
-			GameManager.steal_from_player(thief_idx, captured)
-		)
-		steal_list.add_child(btn)
-	steal_panel.visible = true
+# ── Misc ───────────────────────────────────────────────────────────────────
+func _set_action(action: String) -> void:
+	_pending_action = action
 
-func _open_played_dev_panel() -> void:
-	for child in played_dev_list.get_children():
-		child.queue_free()
-
-	var card_labels: Dictionary = {
-		"knight":         "⚔️ Knight",
-		"road_building":  "🛤️ Road Building",
-		"year_of_plenty": "🌟 Year of Plenty",
-		"monopoly":       "💰 Monopoly",
-	}
-
-	var any := false
-	for i in GameManager.players.size():
-		var p := GameManager.players[i]
-		if p.played_dev_cards.is_empty() and p.victory_point_cards == 0:
-			continue
-		any = true
-		var header := Label.new()
-		header.text = "── Player %d ──" % (i + 1)
-		header.add_theme_color_override("font_color", p.color)
-		played_dev_list.add_child(header)
-
-		var counts: Dictionary = {}
-		for card in p.played_dev_cards:
-			counts[card] = counts.get(card, 0) + 1
-		if p.victory_point_cards > 0:
-			counts["victory_point"] = p.victory_point_cards
-
-		for card in counts:
-			var lbl := Label.new()
-			var label: String = "🏆 Victory Point" if card == "victory_point" \
-				else card_labels.get(card, card)
-			lbl.text = "  %s ×%d" % [label, counts[card]]
-			played_dev_list.add_child(lbl)
-
-	if not any:
-		var lbl := Label.new()
-		lbl.text = "(no dev cards played yet)"
-		played_dev_list.add_child(lbl)
-
-	played_dev_panel.visible = true
+func _on_game_over(winner: int) -> void:
+	lbl_phase.text = "🏆 Player %d WINS!" % (winner + 1)
+	if game_section.visible:
+		btn_roll.disabled = true
+		btn_end.disabled  = true

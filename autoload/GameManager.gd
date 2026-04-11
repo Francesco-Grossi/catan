@@ -1,7 +1,7 @@
 extends Node
 
 # ── Enums ──────────────────────────────────────────────────────────────────
-enum Phase { SETUP_SETTLEMENT, SETUP_ROAD, ROLL, BUILD, MOVE_ROBBER, DISCARD, END_TURN }
+enum Phase { PRE_GAME, SETUP_SETTLEMENT, SETUP_ROAD, ROLL, BUILD, MOVE_ROBBER, DISCARD, END_TURN }
 enum ResType { WOOD, BRICK, ORE, WHEAT, SHEEP }
 enum Terrain { WOOD, BRICK, ORE, WHEAT, SHEEP, DESERT }
 enum Building { NONE, SETTLEMENT, CITY }
@@ -17,6 +17,9 @@ signal log_message(msg: String)
 signal discard_required(player_index: int, amount: int)
 signal robber_placement_required()
 signal steal_required(thief_index: int, victim_indices: Array)
+# Player trade signals
+signal trade_offer_sent(from_idx: int, to_idx: int, give: Dictionary, receive: Dictionary)
+signal trade_offer_resolved()
 
 # ── Constants ──────────────────────────────────────────────────────────────
 const WINNING_VP := 10
@@ -30,9 +33,9 @@ var TERRAIN_COUNTS: Dictionary = {}
 # ── State ──────────────────────────────────────────────────────────────────
 var players: Array[PlayerData] = []
 var current_player_index: int = 0
-var current_phase: int = Phase.SETUP_SETTLEMENT
-var setup_round: int = 0          # 0 = forward (1→N), 1 = backward (N→1)
-var setup_placements: int = 0     # total road placements finished
+var current_phase: int = Phase.PRE_GAME
+var setup_round: int = 0
+var setup_placements: int = 0
 var robber_hex = null
 var dev_card_deck: Array[String] = []
 
@@ -44,6 +47,20 @@ var _discard_amount: int = 0
 var hex_map: Dictionary = {}
 var vertices: Array = []
 var edges: Array = []
+
+# ── Undo State ────────────────────────────────────────────────────────────
+# Stores the last build action so it can be undone once per turn
+# Format: { "type": "road"/"settlement"/"city", "node": <Node>, "player_idx": int,
+#           "cost": Dictionary, "was_setup": bool, "prev_building": int,
+#           "prev_building_owner": int, "prev_road_owner": int,
+#           "vp_delta": int, "settlements_delta": int, "cities_delta": int, "roads_delta": int }
+var _undo_action: Dictionary = {}
+
+# ── Trade State ───────────────────────────────────────────────────────────
+var _trade_from_idx: int = -1
+var _trade_to_idx: int = -1
+var _trade_give: Dictionary = {}     # ResType → amount
+var _trade_receive: Dictionary = {}  # ResType → amount
 
 # ── Lifecycle ──────────────────────────────────────────────────────────────
 func _ready() -> void:
@@ -89,9 +106,17 @@ func init_players(count: int) -> void:
 		}
 		players.append(p)
 	current_player_index = 0
-	current_phase = Phase.SETUP_SETTLEMENT
+	current_phase = Phase.PRE_GAME
 	setup_round = 0
 	setup_placements = 0
+
+# ── Pre-game ───────────────────────────────────────────────────────────────
+func start_game() -> void:
+	if current_phase == Phase.PRE_GAME:
+		current_phase = Phase.SETUP_SETTLEMENT
+		phase_changed.emit(current_phase)
+		turn_changed.emit(current_player_index)
+		log_message.emit("Game started! Player 1, place a settlement.")
 
 # ── Phase helpers ──────────────────────────────────────────────────────────
 func get_current_player() -> PlayerData:
@@ -100,39 +125,28 @@ func get_current_player() -> PlayerData:
 func _is_setup_phase() -> bool:
 	return current_phase == Phase.SETUP_SETTLEMENT or current_phase == Phase.SETUP_ROAD
 
-# ── FIX [2]: Correct snake-draft setup order ───────────────────────────────
-# Each player places exactly ONE settlement then ONE road before the turn
-# passes.  Order: 1, 2, 3, 4 (round 0 forward) then 4, 3, 2, 1 (round 1 back).
-# setup_placements counts completed road placements (= completed turns).
 func advance_setup() -> void:
 	if current_phase == Phase.SETUP_SETTLEMENT:
-		# Settlement placed — now the same player must place a road
 		current_phase = Phase.SETUP_ROAD
 		phase_changed.emit(current_phase)
 		return
 
-	# Road placed — this player's setup turn is done
 	setup_placements += 1
-	var total_turns: int = players.size() * 2   # 8 turns for 4 players
+	var total_turns: int = players.size() * 2
 
 	if setup_placements >= total_turns:
-		# All setup done — hand off to normal play starting with player 0
 		current_player_index = 0
 		current_phase = Phase.ROLL
 		phase_changed.emit(current_phase)
 		turn_changed.emit(current_player_index)
 		return
 
-	# Advance to next player using snake order
 	if setup_round == 0:
-		# Forward pass: 0 → 1 → 2 → 3
 		if current_player_index < players.size() - 1:
 			current_player_index += 1
 		else:
-			# Reached last player — start the backward pass, same player goes again
 			setup_round = 1
 	else:
-		# Backward pass: 3 → 2 → 1 → 0
 		if current_player_index > 0:
 			current_player_index -= 1
 
@@ -144,6 +158,8 @@ func advance_setup() -> void:
 func roll_dice() -> void:
 	if current_phase != Phase.ROLL:
 		return
+	# Clear undo when a new turn starts (roll = start of turn)
+	_undo_action.clear()
 	var d1 := randi_range(1, 6)
 	var d2 := randi_range(1, 6)
 	var total := d1 + d2
@@ -159,6 +175,7 @@ func roll_dice() -> void:
 func end_turn() -> void:
 	if current_phase != Phase.BUILD:
 		return
+	_undo_action.clear()
 	_check_victory()
 	current_player_index = (current_player_index + 1) % players.size()
 	current_phase = Phase.ROLL
@@ -180,29 +197,46 @@ func spend(player_idx: int, item: String) -> void:
 	resources_changed.emit(player_idx)
 
 func build_settlement(player_idx: int, vertex: Node) -> bool:
+	if current_phase == Phase.PRE_GAME:
+		return false
 	if not _is_setup_phase() and not can_afford(player_idx, "settlement"):
 		return false
 	if not vertex.can_place_settlement(player_idx):
 		return false
-	if not _is_setup_phase():
+	var was_setup := _is_setup_phase()
+	var cost_paid := {}
+	if not was_setup:
+		cost_paid = (BUILD_COSTS["settlement"] as Dictionary).duplicate()
 		spend(player_idx, "settlement")
 	vertex.place_settlement(player_idx)
 	players[player_idx].settlements += 1
 	players[player_idx].victory_points += 1
-	if _is_setup_phase() and setup_round == 1:
+	if was_setup and setup_round == 1:
 		_give_setup_resources(vertex)
 	resources_changed.emit(player_idx)
 	log_message.emit("Player %d built a settlement" % (player_idx + 1))
+	# Record undo
+	_undo_action = {
+		"type": "settlement",
+		"node": vertex,
+		"player_idx": player_idx,
+		"cost": cost_paid,
+		"was_setup": was_setup,
+		"prev_building": 0,
+		"prev_building_owner": -1,
+		"vp_delta": 1,
+		"settlements_delta": 1,
+	}
 	return true
 
 func build_city(player_idx: int, vertex: Node) -> bool:
 	if not can_afford(player_idx, "city"):
 		log_message.emit("Player %d cannot afford a city" % (player_idx + 1))
 		return false
-	# building == 1 means SETTLEMENT (raw int, avoids enum comparison issues)
 	if vertex.building_owner != player_idx or vertex.building != 1:
 		log_message.emit("Player %d: click one of your own settlements to upgrade" % (player_idx + 1))
 		return false
+	var cost_paid := (BUILD_COSTS["city"] as Dictionary).duplicate()
 	spend(player_idx, "city")
 	vertex.upgrade_to_city()
 	players[player_idx].settlements -= 1
@@ -210,6 +244,17 @@ func build_city(player_idx: int, vertex: Node) -> bool:
 	players[player_idx].victory_points += 1
 	resources_changed.emit(player_idx)
 	log_message.emit("Player %d built a city" % (player_idx + 1))
+	# Record undo
+	_undo_action = {
+		"type": "city",
+		"node": vertex,
+		"player_idx": player_idx,
+		"cost": cost_paid,
+		"was_setup": false,
+		"vp_delta": 1,
+		"settlements_delta": -1,
+		"cities_delta": 1,
+	}
 	return true
 
 func build_road(player_idx: int, edge: Node) -> bool:
@@ -218,17 +263,84 @@ func build_road(player_idx: int, edge: Node) -> bool:
 		return false
 	if not edge.can_place_road(player_idx):
 		return false
+	var was_setup := _is_setup_phase()
+	var cost_paid := {}
 	if is_free:
 		players[player_idx].free_roads -= 1
 		log_message.emit("Player %d used a free road (%d left)" % [player_idx + 1, players[player_idx].free_roads])
-	elif not _is_setup_phase():
+	elif not was_setup:
+		cost_paid = (BUILD_COSTS["road"] as Dictionary).duplicate()
 		spend(player_idx, "road")
 	edge.place_road(player_idx)
 	players[player_idx].roads += 1
 	_update_longest_road()
 	log_message.emit("Player %d built a road" % (player_idx + 1))
+	# Record undo
+	_undo_action = {
+		"type": "road",
+		"node": edge,
+		"player_idx": player_idx,
+		"cost": cost_paid,
+		"was_setup": was_setup,
+		"was_free": is_free,
+		"roads_delta": 1,
+	}
 	return true
 
+# ── Undo ───────────────────────────────────────────────────────────────────
+func can_undo() -> bool:
+	return not _undo_action.is_empty()
+
+func undo_last_build() -> bool:
+	if _undo_action.is_empty():
+		return false
+	var action := _undo_action
+	_undo_action = {}
+	var player_idx: int = action["player_idx"]
+	var p := players[player_idx]
+
+	match action["type"]:
+		"settlement":
+			var vertex: Node = action["node"]
+			vertex.building = 0
+			vertex.building_owner = -1
+			vertex._refresh_visual()
+			p.settlements -= 1
+			p.victory_points -= 1
+			# Refund cost if not setup
+			if not action["was_setup"]:
+				for res in action["cost"]:
+					p.resources[res] = p.resources.get(res, 0) + action["cost"][res]
+			# Take back setup resources if second round
+			# (complex to undo; we skip setup-resource refund for simplicity)
+		"city":
+			var vertex: Node = action["node"]
+			# Downgrade back to settlement
+			vertex.building = 1
+			vertex._refresh_visual()
+			p.settlements += 1
+			p.cities -= 1
+			p.victory_points -= 1
+			# Refund cost
+			for res in action["cost"]:
+				p.resources[res] = p.resources.get(res, 0) + action["cost"][res]
+		"road":
+			var edge: Node = action["node"]
+			edge.road_owner = -1
+			edge._refresh_visual()
+			p.roads -= 1
+			if action["was_free"]:
+				p.free_roads += 1
+			elif not action["was_setup"]:
+				for res in action["cost"]:
+					p.resources[res] = p.resources.get(res, 0) + action["cost"][res]
+			_update_longest_road()
+
+	resources_changed.emit(player_idx)
+	log_message.emit("Player %d undid their last build." % (player_idx + 1))
+	return true
+
+# ── Dev Cards ──────────────────────────────────────────────────────────────
 func buy_dev_card(player_idx: int) -> bool:
 	if dev_card_deck.is_empty():
 		log_message.emit("Dev card deck is empty!")
@@ -238,7 +350,6 @@ func buy_dev_card(player_idx: int) -> bool:
 		return false
 	spend(player_idx, "dev_card")
 	var card: String = dev_card_deck.pop_back()
-	# Victory point cards score immediately and are never added to playable hand
 	if card == "victory_point":
 		players[player_idx].victory_points += 1
 		players[player_idx].victory_point_cards += 1
@@ -299,7 +410,7 @@ func play_monopoly(player_idx: int, res: int) -> void:
 	var names := ["Wood", "Brick", "Ore", "Wheat", "Sheep"]
 	log_message.emit("Player %d monopolized %s — gained %d" % [player_idx + 1, names[res], total])
 
-# ── Trading ────────────────────────────────────────────────────────────────
+# ── Bank Trading ───────────────────────────────────────────────────────────
 func bank_trade(player_idx: int, give_res: int, receive_res: int) -> bool:
 	var p := players[player_idx]
 	var rate := _get_trade_rate(player_idx, give_res)
@@ -311,6 +422,68 @@ func bank_trade(player_idx: int, give_res: int, receive_res: int) -> bool:
 	var names := ["Wood", "Brick", "Ore", "Wheat", "Sheep"]
 	log_message.emit("Player %d traded %d %s → 1 %s" % [player_idx + 1, rate, names[give_res], names[receive_res]])
 	return true
+
+# ── Player-to-Player Trading ───────────────────────────────────────────────
+func send_trade_offer(from_idx: int, to_idx: int, give: Dictionary, receive: Dictionary) -> void:
+	if current_phase != Phase.BUILD:
+		return
+	_trade_from_idx = from_idx
+	_trade_to_idx   = to_idx
+	_trade_give     = give.duplicate()
+	_trade_receive  = receive.duplicate()
+	var names := ["Wood", "Brick", "Ore", "Wheat", "Sheep"]
+	var give_str := ""
+	for res in give:
+		if give[res] > 0:
+			give_str += "%d %s " % [give[res], names[res]]
+	var recv_str := ""
+	for res in receive:
+		if receive[res] > 0:
+			recv_str += "%d %s " % [receive[res], names[res]]
+	log_message.emit("Player %d offers %sto Player %d for %s" % [from_idx + 1, give_str, to_idx + 1, recv_str])
+	trade_offer_sent.emit(from_idx, to_idx, give, receive)
+
+func accept_trade() -> void:
+	if _trade_from_idx < 0 or _trade_to_idx < 0:
+		return
+	var giver  := players[_trade_from_idx]
+	var taker  := players[_trade_to_idx]
+	# Validate both sides still can afford
+	for res in _trade_give:
+		if giver.resources.get(res, 0) < _trade_give[res]:
+			log_message.emit("Trade failed: Player %d no longer has enough resources." % (_trade_from_idx + 1))
+			_clear_trade()
+			trade_offer_resolved.emit()
+			return
+	for res in _trade_receive:
+		if taker.resources.get(res, 0) < _trade_receive[res]:
+			log_message.emit("Trade failed: Player %d no longer has enough resources." % (_trade_to_idx + 1))
+			_clear_trade()
+			trade_offer_resolved.emit()
+			return
+	# Execute
+	for res in _trade_give:
+		giver.resources[res] -= _trade_give[res]
+		taker.resources[res] = taker.resources.get(res, 0) + _trade_give[res]
+	for res in _trade_receive:
+		taker.resources[res] -= _trade_receive[res]
+		giver.resources[res] = giver.resources.get(res, 0) + _trade_receive[res]
+	resources_changed.emit(_trade_from_idx)
+	resources_changed.emit(_trade_to_idx)
+	log_message.emit("✅ Trade accepted! Player %d and Player %d exchanged resources." % [_trade_from_idx + 1, _trade_to_idx + 1])
+	_clear_trade()
+	trade_offer_resolved.emit()
+
+func decline_trade() -> void:
+	log_message.emit("❌ Player %d declined the trade offer." % (_trade_to_idx + 1))
+	_clear_trade()
+	trade_offer_resolved.emit()
+
+func _clear_trade() -> void:
+	_trade_from_idx = -1
+	_trade_to_idx   = -1
+	_trade_give     = {}
+	_trade_receive  = {}
 
 # ── Robber ─────────────────────────────────────────────────────────────────
 func move_robber(hex) -> void:
@@ -326,7 +499,6 @@ func move_robber(hex) -> void:
 	robber_moved.emit()
 	log_message.emit("Robber moved to (%d,%d)" % [hex.q, hex.r])
 
-	# Find adjacent players to steal from (exclude current player, must have resources)
 	var victims: Array = []
 	for v in hex.vertex_nodes:
 		var owner: int = v.building_owner
@@ -338,19 +510,15 @@ func move_robber(hex) -> void:
 				victims.append(owner)
 
 	if victims.is_empty():
-		# No one to steal from — go straight to BUILD
 		current_phase = Phase.BUILD
 		phase_changed.emit(current_phase)
 	else:
-		# Let UI ask the current player to pick a victim
-		current_phase = Phase.BUILD   # phase stays BUILD so UI isn't blocked
+		current_phase = Phase.BUILD
 		phase_changed.emit(current_phase)
 		steal_required.emit(current_player_index, victims)
 
-# Called by UI when the player picks a victim to steal from
 func steal_from_player(thief_idx: int, victim_idx: int) -> void:
 	var victim := players[victim_idx]
-	# Collect resources the victim actually has
 	var available: Array = []
 	for res in ResType.values():
 		for _i in victim.resources.get(res, 0):
@@ -421,7 +589,7 @@ func _distribute_resources(number: int) -> void:
 				var v_owner: int = v.building_owner
 				var v_building: int = v.building
 				if v_owner >= 0:
-					var amount: int = 2 if v_building == Building.CITY else 1
+					var amount: int = 2 if v_building == 2 else 1
 					players[v_owner].resources[res] = players[v_owner].resources.get(res, 0) + amount
 					resources_changed.emit(v_owner)
 
@@ -442,37 +610,27 @@ func _get_trade_rate(player_idx: int, res: int) -> int:
 	return 4
 
 func _update_longest_road() -> void:
-	# Find who currently holds longest road (if anyone)
 	var current_holder := -1
 	for i in players.size():
 		if players[i].has_longest_road:
 			current_holder = i
 			break
-
-	# Calculate all lengths
 	for i in players.size():
 		players[i].longest_road_length = _calculate_longest_road(i)
-
-	# Find the best length among all players
 	var best_length := 0
 	var best_player := -1
 	for i in players.size():
 		if players[i].longest_road_length > best_length:
 			best_length = players[i].longest_road_length
 			best_player = i
-
-	# Minimum 5 roads to claim
 	if best_length < 5:
 		return
-
 	if current_holder == -1:
-		# Nobody holds it yet — first to reach 5 claims it
 		players[best_player].has_longest_road = true
 		players[best_player].victory_points += 2
 		resources_changed.emit(best_player)
 		log_message.emit("🛣️ Player %d claims Longest Road! (length %d)" % [best_player + 1, best_length])
 	elif best_player != current_holder:
-		# Only transfer if the new player's length is STRICTLY GREATER than holder's
 		if players[best_player].longest_road_length > players[current_holder].longest_road_length:
 			players[current_holder].has_longest_road = false
 			players[current_holder].victory_points -= 2
@@ -484,33 +642,25 @@ func _update_longest_road() -> void:
 			log_message.emit("🛣️ Player %d takes Longest Road! (length %d)" % [best_player + 1, best_length])
 
 func _update_largest_army() -> void:
-	# Find who currently holds largest army (if anyone)
 	var current_holder := -1
 	for i in players.size():
 		if players[i].has_largest_army:
 			current_holder = i
 			break
-
-	# Find the player with the most knights
 	var best_knights := 0
 	var best_player := -1
 	for i in players.size():
 		if players[i].knights_played > best_knights:
 			best_knights = players[i].knights_played
 			best_player = i
-
-	# Minimum 3 knights to claim
 	if best_knights < 3:
 		return
-
 	if current_holder == -1:
-		# Nobody holds it yet — first to reach 3 claims it
 		players[best_player].has_largest_army = true
 		players[best_player].victory_points += 2
 		resources_changed.emit(best_player)
 		log_message.emit("⚔️ Player %d claims Largest Army! (%d knights)" % [best_player + 1, best_knights])
 	elif best_player != current_holder:
-		# Only transfer if the new player's count is STRICTLY GREATER than holder's
 		if players[best_player].knights_played > players[current_holder].knights_played:
 			players[current_holder].has_largest_army = false
 			players[current_holder].victory_points -= 2

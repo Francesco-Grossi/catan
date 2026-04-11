@@ -237,7 +237,7 @@ func _apply_port_to_vertex(v: Node, type: int) -> void:
 	var label_text: String
 	
 	if type == 5: # Generic 3:1 Port
-		port_color = Color(0.5, 0.5, 0.5) # Grey
+		port_color = Color(0, 0, 0) # Black
 		label_text = "3:1"
 	else: # Specific 2:1 Ports [cite: 18, 20]
 		# Use the TERRAIN_COLORS you provided
@@ -256,7 +256,7 @@ func _apply_port_to_vertex(v: Node, type: int) -> void:
 	# 2. Create the Visual Marker (Small Circle)
 	var circle = Polygon2D.new()
 	var points = PackedVector2Array()
-	var radius = 7.0
+	var radius = 4.0
 	for i in range(12):
 		var a = i * TAU / 12
 		points.append(Vector2(cos(a), sin(a)) * radius)
