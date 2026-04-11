@@ -8,12 +8,15 @@ extends CanvasLayer
 @onready var lbl_resources:    Label        = $Panel/VBox/LblResources
 @onready var lbl_robber:       Label        = $Panel/VBox/LblRobber
 
-# Pre-game section (lives inside the sidebar VBox)
+# Pre-game section
 @onready var pregame_section:  VBoxContainer = $Panel/VBox/PreGameSection
+@onready var btn_minus:        Button        = $Panel/VBox/PreGameSection/HBoxPlayers/BtnMinus
+@onready var lbl_count:        Label         = $Panel/VBox/PreGameSection/HBoxPlayers/LblCount
+@onready var btn_plus:         Button        = $Panel/VBox/PreGameSection/HBoxPlayers/BtnPlus
 @onready var btn_shuffle:      Button        = $Panel/VBox/PreGameSection/BtnShuffle
 @onready var btn_start:        Button        = $Panel/VBox/PreGameSection/BtnStart
 
-# Game section (lives inside the sidebar VBox, hidden during PRE_GAME)
+# Game section
 @onready var game_section:     VBoxContainer = $Panel/VBox/GameSection
 @onready var btn_roll:         Button        = $Panel/VBox/GameSection/BtnRoll
 @onready var btn_end:          Button        = $Panel/VBox/GameSection/BtnEnd
@@ -82,10 +85,12 @@ var _discard_spins:  Dictionary = {}
 var _pt_give_spins:  Dictionary = {}
 var _pt_recv_spins:  Dictionary = {}
 var _board: Node2D = null
+var _selected_player_count: int = 4   # default 4
 
 func _ready() -> void:
 	_board = get_node_or_null("/root/Main/Board")
 
+	# GameManager signals
 	GameManager.phase_changed.connect(_on_phase_changed)
 	GameManager.turn_changed.connect(func(_i): _refresh_ui())
 	GameManager.resources_changed.connect(func(_i): _refresh_ui())
@@ -98,9 +103,13 @@ func _ready() -> void:
 	GameManager.trade_offer_sent.connect(_on_trade_offer_sent)
 	GameManager.trade_offer_resolved.connect(func(): tr_panel.visible = false)
 
+	# Pre-game buttons
+	btn_minus.pressed.connect(_on_player_count_minus)
+	btn_plus.pressed.connect(_on_player_count_plus)
 	btn_shuffle.pressed.connect(_on_shuffle)
 	btn_start.pressed.connect(_on_start)
 
+	# Game buttons
 	btn_roll.pressed.connect(func(): GameManager.roll_dice())
 	btn_end.pressed.connect(func(): GameManager.end_turn())
 	btn_undo.pressed.connect(func(): GameManager.undo_last_build(); _refresh_ui())
@@ -114,6 +123,7 @@ func _ready() -> void:
 	btn_bank_trade.pressed.connect(_on_bank_trade)
 	btn_player_trade.pressed.connect(_open_pt_panel)
 
+	# Panel buttons
 	btn_close_dev.pressed.connect(func(): dev_panel.visible = false)
 	btn_close_played.pressed.connect(func(): played_panel.visible = false)
 	btn_close_stats.pressed.connect(func(): stats_panel.visible = false)
@@ -125,6 +135,7 @@ func _ready() -> void:
 	btn_tr_accept.pressed.connect(func(): GameManager.accept_trade())
 	btn_tr_decline.pressed.connect(func(): GameManager.decline_trade())
 
+	# Populate resource dropdowns
 	var res_labels := ["Wood", "Brick", "Ore", "Wheat", "Sheep"]
 	for opt in [give_option, receive_option, yop_res1, yop_res2, mono_res]:
 		opt.clear()
@@ -133,19 +144,41 @@ func _ready() -> void:
 
 	_build_pt_spins()
 
+	# Hide all floating panels at start
 	for pan in [dev_panel, played_panel, stats_panel, discard_panel, yop_panel,
 				mono_panel, steal_panel, pt_panel, tr_panel]:
 		pan.visible = false
 	lbl_robber.visible = false
 
+	# Set initial player count display
+	_refresh_player_count_ui()
+
+	# Connect board node clicks
 	for v in GameManager.vertices:
 		v.clicked.connect(_on_vertex_clicked)
 	for e in GameManager.edges:
 		e.clicked.connect(_on_edge_clicked)
 
+	# Apply initial phase
 	_on_phase_changed(GameManager.current_phase)
 
-# ── Phase change ───────────────────────────────────────────────────────────
+# ── Player count selector ─────────────────────────────────────────────────
+func _on_player_count_minus() -> void:
+	if _selected_player_count > 3:
+		_selected_player_count -= 1
+		_refresh_player_count_ui()
+
+func _on_player_count_plus() -> void:
+	if _selected_player_count < 4:
+		_selected_player_count += 1
+		_refresh_player_count_ui()
+
+func _refresh_player_count_ui() -> void:
+	lbl_count.text = str(_selected_player_count)
+	btn_minus.disabled = (_selected_player_count <= 3)
+	btn_plus.disabled  = (_selected_player_count >= 4)
+
+# ── Phase change: toggle sidebar sections ─────────────────────────────────
 func _on_phase_changed(phase: int) -> void:
 	var in_pregame := (phase == GameManager.Phase.PRE_GAME)
 	pregame_section.visible = in_pregame
@@ -221,6 +254,7 @@ func _refresh_ui() -> void:
 
 # ── Pre-game ───────────────────────────────────────────────────────────────
 func _on_start() -> void:
+	GameManager.init_players(_selected_player_count)
 	GameManager.start_game()
 
 func _on_shuffle() -> void:
@@ -317,13 +351,11 @@ func _open_stats_panel() -> void:
 	for i in GameManager.players.size():
 		var pl := GameManager.players[i]
 
-		# Player header (coloured)
 		var header := Label.new()
 		header.text = "── Player %d ──" % (i + 1)
 		header.add_theme_color_override("font_color", pl.color)
 		stats_list.add_child(header)
 
-		# Total resources (sum of all types)
 		var total_res := 0
 		for res in pl.resources.values():
 			total_res += res
@@ -331,15 +363,11 @@ func _open_stats_panel() -> void:
 		res_lbl.text = "  🗃 Resources: %d" % total_res
 		stats_list.add_child(res_lbl)
 
-		# Total unplayed dev cards in hand
-		# dev_cards holds regular cards; victory_point_cards are scored immediately
-		# but we show them here as "unplayed" because the player still holds them
 		var total_dev := pl.dev_cards.size() + pl.victory_point_cards
 		var dev_lbl := Label.new()
 		dev_lbl.text = "  🃏 Dev cards (unplayed): %d" % total_dev
 		stats_list.add_child(dev_lbl)
 
-		# Separator between players (not after last)
 		if i < GameManager.players.size() - 1:
 			var sep := HSeparator.new()
 			stats_list.add_child(sep)

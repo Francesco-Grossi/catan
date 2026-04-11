@@ -53,6 +53,28 @@ layout_mode = 2
 text = "── Pre-Game ──"
 horizontal_alignment = 1
 
+[node name="HBoxPlayers" type="HBoxContainer" parent="Panel/VBox/PreGameSection" unique_id=200000005]
+layout_mode = 2
+
+[node name="LblPlayerCount" type="Label" parent="Panel/VBox/PreGameSection/HBoxPlayers" unique_id=200000006]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Players:"
+
+[node name="BtnMinus" type="Button" parent="Panel/VBox/PreGameSection/HBoxPlayers" unique_id=200000007]
+layout_mode = 2
+text = "◀"
+
+[node name="LblCount" type="Label" parent="Panel/VBox/PreGameSection/HBoxPlayers" unique_id=200000008]
+custom_minimum_size = Vector2(24, 0)
+layout_mode = 2
+text = "4"
+horizontal_alignment = 1
+
+[node name="BtnPlus" type="Button" parent="Panel/VBox/PreGameSection/HBoxPlayers" unique_id=200000009]
+layout_mode = 2
+text = "▶"
+
 [node name="BtnShuffle" type="Button" parent="Panel/VBox/PreGameSection" unique_id=200000003]
 layout_mode = 2
 text = "🔀 Shuffle Board"
