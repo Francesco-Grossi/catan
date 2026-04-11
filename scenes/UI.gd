@@ -24,6 +24,7 @@ extends CanvasLayer
 @onready var btn_dev:          Button        = $Panel/VBox/GameSection/BtnDev
 @onready var btn_view_dev:     Button        = $Panel/VBox/GameSection/BtnViewDev
 @onready var btn_view_played:  Button        = $Panel/VBox/GameSection/BtnViewPlayed
+@onready var btn_view_stats:   Button        = $Panel/VBox/GameSection/BtnViewStats
 @onready var hbox_bank_trade:  HBoxContainer = $Panel/VBox/GameSection/HBoxBankTrade
 @onready var give_option:      OptionButton  = $Panel/VBox/GameSection/HBoxBankTrade/GiveOption
 @onready var receive_option:   OptionButton  = $Panel/VBox/GameSection/HBoxBankTrade/ReceiveOption
@@ -40,6 +41,10 @@ extends CanvasLayer
 @onready var played_panel:        Panel         = $PlayedPanel
 @onready var played_list:         VBoxContainer = $PlayedPanel/VBox/PlayedList
 @onready var btn_close_played:    Button        = $PlayedPanel/VBox/BtnClose
+
+@onready var stats_panel:         Panel         = $StatsPanel
+@onready var stats_list:          VBoxContainer = $StatsPanel/VBox/StatsList
+@onready var btn_close_stats:     Button        = $StatsPanel/VBox/BtnClose
 
 @onready var discard_panel:       Panel         = $DiscardPanel
 @onready var discard_label:       Label         = $DiscardPanel/VBox/LblDiscard
@@ -79,10 +84,8 @@ var _pt_recv_spins:  Dictionary = {}
 var _board: Node2D = null
 
 func _ready() -> void:
-	# Board ref — safe, resolved at runtime not parse-time
 	_board = get_node_or_null("/root/Main/Board")
 
-	# GameManager signals
 	GameManager.phase_changed.connect(_on_phase_changed)
 	GameManager.turn_changed.connect(func(_i): _refresh_ui())
 	GameManager.resources_changed.connect(func(_i): _refresh_ui())
@@ -95,11 +98,9 @@ func _ready() -> void:
 	GameManager.trade_offer_sent.connect(_on_trade_offer_sent)
 	GameManager.trade_offer_resolved.connect(func(): tr_panel.visible = false)
 
-	# Pre-game buttons
 	btn_shuffle.pressed.connect(_on_shuffle)
 	btn_start.pressed.connect(_on_start)
 
-	# Game buttons
 	btn_roll.pressed.connect(func(): GameManager.roll_dice())
 	btn_end.pressed.connect(func(): GameManager.end_turn())
 	btn_undo.pressed.connect(func(): GameManager.undo_last_build(); _refresh_ui())
@@ -109,12 +110,13 @@ func _ready() -> void:
 	btn_dev.pressed.connect(_on_buy_dev)
 	btn_view_dev.pressed.connect(_open_dev_panel)
 	btn_view_played.pressed.connect(_open_played_panel)
+	btn_view_stats.pressed.connect(_open_stats_panel)
 	btn_bank_trade.pressed.connect(_on_bank_trade)
 	btn_player_trade.pressed.connect(_open_pt_panel)
 
-	# Panel buttons
 	btn_close_dev.pressed.connect(func(): dev_panel.visible = false)
 	btn_close_played.pressed.connect(func(): played_panel.visible = false)
+	btn_close_stats.pressed.connect(func(): stats_panel.visible = false)
 	btn_confirm_discard.pressed.connect(_on_confirm_discard)
 	btn_yop_ok.pressed.connect(_on_yop_ok)
 	btn_mono_ok.pressed.connect(_on_mono_ok)
@@ -123,7 +125,6 @@ func _ready() -> void:
 	btn_tr_accept.pressed.connect(func(): GameManager.accept_trade())
 	btn_tr_decline.pressed.connect(func(): GameManager.decline_trade())
 
-	# Populate resource dropdowns
 	var res_labels := ["Wood", "Brick", "Ore", "Wheat", "Sheep"]
 	for opt in [give_option, receive_option, yop_res1, yop_res2, mono_res]:
 		opt.clear()
@@ -132,22 +133,19 @@ func _ready() -> void:
 
 	_build_pt_spins()
 
-	# Hide all floating panels at start
-	for pan in [dev_panel, played_panel, discard_panel, yop_panel,
+	for pan in [dev_panel, played_panel, stats_panel, discard_panel, yop_panel,
 				mono_panel, steal_panel, pt_panel, tr_panel]:
 		pan.visible = false
 	lbl_robber.visible = false
 
-	# Connect board node clicks
 	for v in GameManager.vertices:
 		v.clicked.connect(_on_vertex_clicked)
 	for e in GameManager.edges:
 		e.clicked.connect(_on_edge_clicked)
 
-	# Apply initial phase
 	_on_phase_changed(GameManager.current_phase)
 
-# ── Phase change: toggle sidebar sections ─────────────────────────────────
+# ── Phase change ───────────────────────────────────────────────────────────
 func _on_phase_changed(phase: int) -> void:
 	var in_pregame := (phase == GameManager.Phase.PRE_GAME)
 	pregame_section.visible = in_pregame
@@ -212,7 +210,6 @@ func _refresh_ui() -> void:
 	btn_dev.text      = "🃏 Buy Dev (%d)" % GameManager.dev_card_deck.size()
 	btn_view_dev.text = "📋 Dev Cards (%d)" % p.dev_cards.size()
 
-	# Auto-select during setup so player can click board immediately
 	if in_setup_s:
 		_pending_action = "settlement"
 	elif in_setup_r:
@@ -311,6 +308,43 @@ func _open_played_panel() -> void:
 		lb.text = "(none yet)"
 		played_list.add_child(lb)
 	played_panel.visible = true
+
+# ── Player Stats panel ─────────────────────────────────────────────────────
+func _open_stats_panel() -> void:
+	for c in stats_list.get_children():
+		c.queue_free()
+
+	for i in GameManager.players.size():
+		var pl := GameManager.players[i]
+
+		# Player header (coloured)
+		var header := Label.new()
+		header.text = "── Player %d ──" % (i + 1)
+		header.add_theme_color_override("font_color", pl.color)
+		stats_list.add_child(header)
+
+		# Total resources (sum of all types)
+		var total_res := 0
+		for res in pl.resources.values():
+			total_res += res
+		var res_lbl := Label.new()
+		res_lbl.text = "  🗃 Resources: %d" % total_res
+		stats_list.add_child(res_lbl)
+
+		# Total unplayed dev cards in hand
+		# dev_cards holds regular cards; victory_point_cards are scored immediately
+		# but we show them here as "unplayed" because the player still holds them
+		var total_dev := pl.dev_cards.size() + pl.victory_point_cards
+		var dev_lbl := Label.new()
+		dev_lbl.text = "  🃏 Dev cards (unplayed): %d" % total_dev
+		stats_list.add_child(dev_lbl)
+
+		# Separator between players (not after last)
+		if i < GameManager.players.size() - 1:
+			var sep := HSeparator.new()
+			stats_list.add_child(sep)
+
+	stats_panel.visible = true
 
 # ── Discard ────────────────────────────────────────────────────────────────
 func _on_discard_required(player_idx: int, amount: int) -> void:

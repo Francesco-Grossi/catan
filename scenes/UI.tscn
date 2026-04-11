@@ -104,6 +104,10 @@ text = "📋 Dev Cards (0)"
 layout_mode = 2
 text = "🗂 Played Dev Cards"
 
+[node name="BtnViewStats" type="Button" parent="Panel/VBox/GameSection" unique_id=300000008]
+layout_mode = 2
+text = "📊 Player Resources & Dev"
+
 [node name="HSep1" type="HSeparator" parent="Panel/VBox/GameSection" unique_id=300000006]
 layout_mode = 2
 
@@ -192,6 +196,35 @@ layout_mode = 2
 size_flags_vertical = 3
 
 [node name="BtnClose" type="Button" parent="PlayedPanel/VBox" unique_id=950000006]
+layout_mode = 2
+text = "Close"
+
+[node name="StatsPanel" type="Panel" parent="." unique_id=130000001]
+visible = false
+offset_left = 250.0
+offset_top = 10.0
+offset_right = 520.0
+offset_bottom = 360.0
+
+[node name="VBox" type="VBoxContainer" parent="StatsPanel" unique_id=130000002]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 262.0
+offset_bottom = 344.0
+
+[node name="LblTitle" type="Label" parent="StatsPanel/VBox" unique_id=130000003]
+layout_mode = 2
+text = "📊 Player Resources & Dev Cards"
+
+[node name="HSep" type="HSeparator" parent="StatsPanel/VBox" unique_id=130000004]
+layout_mode = 2
+
+[node name="StatsList" type="VBoxContainer" parent="StatsPanel/VBox" unique_id=130000005]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BtnClose" type="Button" parent="StatsPanel/VBox" unique_id=130000006]
 layout_mode = 2
 text = "Close"
 
