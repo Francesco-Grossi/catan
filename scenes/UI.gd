@@ -48,6 +48,12 @@ extends CanvasLayer
 @onready var steal_label: Label            = $StealPanel/VBox/LblSteal
 @onready var steal_list: VBoxContainer     = $StealPanel/VBox/StealList
 
+# Played dev cards panel
+@onready var played_dev_panel: Panel          = $PlayedDevPanel
+@onready var played_dev_list: VBoxContainer   = $PlayedDevPanel/VBox/PlayedList
+@onready var btn_close_played_dev: Button     = $PlayedDevPanel/VBox/BtnClose
+@onready var btn_view_played_dev: Button      = $Panel/VBox/BtnViewPlayedDev
+
 var _pending_action: String = ""
 var _discard_selections: Dictionary = {}   # ResType → SpinBox
 
@@ -74,6 +80,8 @@ func _ready() -> void:
 	btn_confirm_discard.pressed.connect(_on_confirm_discard)
 	btn_yop_confirm.pressed.connect(_on_yop_confirm)
 	btn_monopoly_confirm.pressed.connect(_on_monopoly_confirm)
+	btn_view_played_dev.pressed.connect(_open_played_dev_panel)
+	btn_close_played_dev.pressed.connect(func(): played_dev_panel.visible = false)
 
 	_populate_trade_options()
 	_populate_res_options([yop_res1, yop_res2, monopoly_res])
@@ -83,6 +91,7 @@ func _ready() -> void:
 	yop_panel.visible = false
 	monopoly_panel.visible = false
 	steal_panel.visible = false
+	played_dev_panel.visible = false
 	lbl_robber_prompt.visible = false
 
 	for v in GameManager.vertices:
@@ -135,18 +144,29 @@ func _refresh_ui() -> void:
 	btn_dev.text = "🃏 Buy Dev (%d)" % GameManager.dev_card_deck.size()
 	btn_view_dev_cards.text = "📋 Dev Cards (%d)" % p.dev_cards.size()
 
-	var in_roll  : bool = GameManager.current_phase == GameManager.Phase.ROLL
-	var in_build : bool = GameManager.current_phase == GameManager.Phase.BUILD
-	var in_setup : bool = GameManager._is_setup_phase()
-	var in_robber: bool = GameManager.current_phase == GameManager.Phase.MOVE_ROBBER
+	var in_roll         : bool = GameManager.current_phase == GameManager.Phase.ROLL
+	var in_build        : bool = GameManager.current_phase == GameManager.Phase.BUILD
+	var in_setup_s      : bool = GameManager.current_phase == GameManager.Phase.SETUP_SETTLEMENT
+	var in_setup_r      : bool = GameManager.current_phase == GameManager.Phase.SETUP_ROAD
+	var in_setup        : bool = in_setup_s or in_setup_r
+	var in_robber       : bool = GameManager.current_phase == GameManager.Phase.MOVE_ROBBER
 
 	btn_roll.disabled       = not in_roll
 	btn_end.disabled        = not in_build
-	btn_settlement.disabled = not (in_build or in_setup)
+	btn_settlement.disabled = not (in_build or in_setup_s)
 	btn_city.disabled       = not in_build
-	btn_road.disabled       = not (in_build or in_setup)
+	btn_road.disabled       = not (in_build or in_setup_r)
 	btn_dev.disabled        = not in_build
 	btn_trade.disabled      = not in_build
+
+	# During setup, auto-set the pending action so player doesn't need to click the button
+	if in_setup_s and _pending_action != "settlement":
+		_pending_action = "settlement"
+	elif in_setup_r and _pending_action != "road":
+		_pending_action = "road"
+	elif not in_setup:
+		# Outside setup, clear any auto-set pending action only if it was auto-set
+		pass
 
 	lbl_robber_prompt.visible = in_robber
 
@@ -348,3 +368,45 @@ func _on_steal_required(thief_idx: int, victim_indices: Array) -> void:
 		)
 		steal_list.add_child(btn)
 	steal_panel.visible = true
+
+func _open_played_dev_panel() -> void:
+	for child in played_dev_list.get_children():
+		child.queue_free()
+
+	var card_labels: Dictionary = {
+		"knight":         "⚔️ Knight",
+		"road_building":  "🛤️ Road Building",
+		"year_of_plenty": "🌟 Year of Plenty",
+		"monopoly":       "💰 Monopoly",
+	}
+
+	var any := false
+	for i in GameManager.players.size():
+		var p := GameManager.players[i]
+		if p.played_dev_cards.is_empty() and p.victory_point_cards == 0:
+			continue
+		any = true
+		var header := Label.new()
+		header.text = "── Player %d ──" % (i + 1)
+		header.add_theme_color_override("font_color", p.color)
+		played_dev_list.add_child(header)
+
+		var counts: Dictionary = {}
+		for card in p.played_dev_cards:
+			counts[card] = counts.get(card, 0) + 1
+		if p.victory_point_cards > 0:
+			counts["victory_point"] = p.victory_point_cards
+
+		for card in counts:
+			var lbl := Label.new()
+			var label: String = "🏆 Victory Point" if card == "victory_point" \
+				else card_labels.get(card, card)
+			lbl.text = "  %s ×%d" % [label, counts[card]]
+			played_dev_list.add_child(lbl)
+
+	if not any:
+		var lbl := Label.new()
+		lbl.text = "(no dev cards played yet)"
+		played_dev_list.add_child(lbl)
+
+	played_dev_panel.visible = true

@@ -199,8 +199,9 @@ func build_city(player_idx: int, vertex: Node) -> bool:
 	if not can_afford(player_idx, "city"):
 		log_message.emit("Player %d cannot afford a city" % (player_idx + 1))
 		return false
-	if vertex.building_owner != player_idx or vertex.building != Building.SETTLEMENT:
-		log_message.emit("Player %d: must click your own settlement to upgrade" % (player_idx + 1))
+	# building == 1 means SETTLEMENT (raw int, avoids enum comparison issues)
+	if vertex.building_owner != player_idx or vertex.building != 1:
+		log_message.emit("Player %d: click one of your own settlements to upgrade" % (player_idx + 1))
 		return false
 	spend(player_idx, "city")
 	vertex.upgrade_to_city()
@@ -237,9 +238,17 @@ func buy_dev_card(player_idx: int) -> bool:
 		return false
 	spend(player_idx, "dev_card")
 	var card: String = dev_card_deck.pop_back()
-	players[player_idx].dev_cards.append(card)
-	resources_changed.emit(player_idx)
-	log_message.emit("Player %d bought a dev card: %s" % [player_idx + 1, card])
+	# Victory point cards score immediately and are never added to playable hand
+	if card == "victory_point":
+		players[player_idx].victory_points += 1
+		players[player_idx].victory_point_cards += 1
+		resources_changed.emit(player_idx)
+		log_message.emit("Player %d drew a Victory Point card! (%d VP total)" % [player_idx + 1, players[player_idx].victory_points])
+		_check_victory()
+	else:
+		players[player_idx].dev_cards.append(card)
+		resources_changed.emit(player_idx)
+		log_message.emit("Player %d bought a dev card" % (player_idx + 1))
 	return true
 
 func play_dev_card(player_idx: int, card: String) -> bool:
@@ -249,6 +258,7 @@ func play_dev_card(player_idx: int, card: String) -> bool:
 	if not p.dev_cards.has(card):
 		return false
 	p.dev_cards.erase(card)
+	p.played_dev_cards.append(card)
 	resources_changed.emit(player_idx)
 	match card:
 		"knight":
@@ -258,11 +268,6 @@ func play_dev_card(player_idx: int, card: String) -> bool:
 			current_phase = Phase.MOVE_ROBBER
 			phase_changed.emit(current_phase)
 			robber_placement_required.emit()
-		"victory_point":
-			p.victory_points += 1
-			resources_changed.emit(player_idx)
-			log_message.emit("Player %d played a Victory Point card!" % (player_idx + 1))
-			_check_victory()
 		"road_building":
 			p.free_roads += 2
 			resources_changed.emit(player_idx)
@@ -437,44 +442,84 @@ func _get_trade_rate(player_idx: int, res: int) -> int:
 	return 4
 
 func _update_longest_road() -> void:
+	# Find who currently holds longest road (if anyone)
+	var current_holder := -1
+	for i in players.size():
+		if players[i].has_longest_road:
+			current_holder = i
+			break
+
+	# Calculate all lengths
+	for i in players.size():
+		players[i].longest_road_length = _calculate_longest_road(i)
+
+	# Find the best length among all players
+	var best_length := 0
 	var best_player := -1
-	var best_length := 4
 	for i in players.size():
-		var length := _calculate_longest_road(i)
-		players[i].longest_road_length = length
-		if length > best_length:
-			best_length = length
+		if players[i].longest_road_length > best_length:
+			best_length = players[i].longest_road_length
 			best_player = i
-	for i in players.size():
-		if players[i].has_longest_road and i != best_player:
-			players[i].has_longest_road = false
-			players[i].victory_points -= 2
-			resources_changed.emit(i)
-			log_message.emit("Player %d lost Longest Road!" % (i + 1))
-	if best_player >= 0 and not players[best_player].has_longest_road:
+
+	# Minimum 5 roads to claim
+	if best_length < 5:
+		return
+
+	if current_holder == -1:
+		# Nobody holds it yet — first to reach 5 claims it
 		players[best_player].has_longest_road = true
 		players[best_player].victory_points += 2
 		resources_changed.emit(best_player)
-		log_message.emit("🛣️ Player %d has Longest Road! (length %d)" % [best_player + 1, best_length])
+		log_message.emit("🛣️ Player %d claims Longest Road! (length %d)" % [best_player + 1, best_length])
+	elif best_player != current_holder:
+		# Only transfer if the new player's length is STRICTLY GREATER than holder's
+		if players[best_player].longest_road_length > players[current_holder].longest_road_length:
+			players[current_holder].has_longest_road = false
+			players[current_holder].victory_points -= 2
+			resources_changed.emit(current_holder)
+			log_message.emit("Player %d lost Longest Road!" % (current_holder + 1))
+			players[best_player].has_longest_road = true
+			players[best_player].victory_points += 2
+			resources_changed.emit(best_player)
+			log_message.emit("🛣️ Player %d takes Longest Road! (length %d)" % [best_player + 1, best_length])
 
 func _update_largest_army() -> void:
+	# Find who currently holds largest army (if anyone)
+	var current_holder := -1
+	for i in players.size():
+		if players[i].has_largest_army:
+			current_holder = i
+			break
+
+	# Find the player with the most knights
+	var best_knights := 0
 	var best_player := -1
-	var best_knights := 2
 	for i in players.size():
 		if players[i].knights_played > best_knights:
 			best_knights = players[i].knights_played
 			best_player = i
-	for i in players.size():
-		if players[i].has_largest_army and i != best_player:
-			players[i].has_largest_army = false
-			players[i].victory_points -= 2
-			resources_changed.emit(i)
-			log_message.emit("Player %d lost Largest Army!" % (i + 1))
-	if best_player >= 0 and not players[best_player].has_largest_army:
+
+	# Minimum 3 knights to claim
+	if best_knights < 3:
+		return
+
+	if current_holder == -1:
+		# Nobody holds it yet — first to reach 3 claims it
 		players[best_player].has_largest_army = true
 		players[best_player].victory_points += 2
 		resources_changed.emit(best_player)
-		log_message.emit("⚔️ Player %d has Largest Army! (%d knights)" % [best_player + 1, best_knights])
+		log_message.emit("⚔️ Player %d claims Largest Army! (%d knights)" % [best_player + 1, best_knights])
+	elif best_player != current_holder:
+		# Only transfer if the new player's count is STRICTLY GREATER than holder's
+		if players[best_player].knights_played > players[current_holder].knights_played:
+			players[current_holder].has_largest_army = false
+			players[current_holder].victory_points -= 2
+			resources_changed.emit(current_holder)
+			log_message.emit("Player %d lost Largest Army!" % (current_holder + 1))
+			players[best_player].has_largest_army = true
+			players[best_player].victory_points += 2
+			resources_changed.emit(best_player)
+			log_message.emit("⚔️ Player %d takes Largest Army! (%d knights)" % [best_player + 1, best_knights])
 
 func _calculate_longest_road(player_idx: int) -> int:
 	var player_edges: Array = []

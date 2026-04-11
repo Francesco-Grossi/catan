@@ -76,6 +76,10 @@ text = "🃏 Buy Dev"
 layout_mode = 2
 text = "📋 Dev Cards (0)"
 
+[node name="BtnViewPlayedDev" type="Button" parent="Panel/VBox" unique_id=100000006]
+layout_mode = 2
+text = "🗂 Played Dev Cards"
+
 [node name="HSep1" type="HSeparator" parent="Panel/VBox" unique_id=100000004]
 layout_mode = 2
 
@@ -257,3 +261,32 @@ autowrap_mode = 2
 [node name="StealList" type="VBoxContainer" parent="StealPanel/VBox" unique_id=900000004]
 layout_mode = 2
 size_flags_vertical = 3
+
+[node name="PlayedDevPanel" type="Panel" parent="." unique_id=950000001]
+visible = false
+offset_left = 250.0
+offset_top = 10.0
+offset_right = 520.0
+offset_bottom = 420.0
+
+[node name="VBox" type="VBoxContainer" parent="PlayedDevPanel" unique_id=950000002]
+layout_mode = 0
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 262.0
+offset_bottom = 404.0
+
+[node name="LblTitle" type="Label" parent="PlayedDevPanel/VBox" unique_id=950000003]
+layout_mode = 2
+text = "🗂 Played Dev Cards"
+
+[node name="HSep" type="HSeparator" parent="PlayedDevPanel/VBox" unique_id=950000004]
+layout_mode = 2
+
+[node name="PlayedList" type="VBoxContainer" parent="PlayedDevPanel/VBox" unique_id=950000005]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BtnClose" type="Button" parent="PlayedDevPanel/VBox" unique_id=950000006]
+layout_mode = 2
+text = "Close"

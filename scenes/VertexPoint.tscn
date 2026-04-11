@@ -8,12 +8,8 @@ radius = 14.0
 [node name="VertexPoint" type="Node2D" unique_id=691741828]
 script = ExtResource("1_1tcul")
 
-[node name="Sprite" type="ColorRect" parent="." unique_id=860593452]
+[node name="Sprite" type="Polygon2D" parent="." unique_id=860593452]
 visible = false
-offset_left = -10.0
-offset_top = -10.0
-offset_right = 10.0
-offset_bottom = 10.0
 
 [node name="Area2D" type="Area2D" parent="." unique_id=1760075703]
 
